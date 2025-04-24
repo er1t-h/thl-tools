@@ -298,7 +298,7 @@ pub fn pack(source_dir: &str, target_file: &str) -> std::io::Result<()> {
         names[position] = path;
     }
 
-    for entry in header_1s {
+    for entry in &header_1s {
         file.write_u32::<LittleEndian>(entry.compare_bit)?;
         file.write_u32::<LittleEndian>(entry.id)?;
         file.write_u32::<LittleEndian>(entry.left)?;
@@ -338,21 +338,20 @@ pub fn pack(source_dir: &str, target_file: &str) -> std::io::Result<()> {
     let mut offset = 0;
     let mut entries = Vec::new();
 
-    for entry in tree
+    for entry in header_1s
         .into_iter()
-        .skip(1)
         .progress_with_style(bar_style)
         .with_message("compressing and writing files to archive")
         .with_finish(ProgressFinish::AndLeave)
     {
+        let entry = names[entry.id as usize];
         let ext = entry
-            .name
             .extension
             .into_iter()
             .map(|x| x as char)
             .take_while(|&x| x != ' ')
             .collect::<String>();
-        let file_content = fs::read(format!("{}/{}.{}", source_dir, entry.name.file, ext))?;
+        let file_content = fs::read(format!("{}/{}.{}", source_dir, entry.file, ext))?;
         let compressed = lz4::block::compress(
             &file_content,
             //None,
