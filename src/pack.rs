@@ -282,23 +282,24 @@ pub fn pack(source_dir: &str, target_file: &str) -> std::io::Result<()> {
 
     let def_slice = SlicedPath::default();
 
-    let mut header_1s = vec![Header1::default(); all_paths.len()];
-    let mut names = vec![&def_slice; all_paths.len()];
+    let mut header_1s = vec![(Header1::default(), &def_slice); all_paths.len()];
 
     for (i, path) in all_paths.iter().enumerate() {
         let position = tree[1..].iter().position(|x| path == x.name).unwrap();
         let entry = &tree[1..][position];
 
-        header_1s[position] = Header1 {
-            id: i as u32,
-            left: entry.left as u32,
-            right: entry.right as u32,
-            compare_bit: entry.compare_bit as u32,
-        };
-        names[position] = path;
+        header_1s[position] = (
+            Header1 {
+                id: i as u32,
+                left: entry.left as u32,
+                right: entry.right as u32,
+                compare_bit: entry.compare_bit as u32,
+            },
+            path,
+        );
     }
 
-    for entry in &header_1s {
+    for (entry, _) in &header_1s {
         file.write_u32::<LittleEndian>(entry.compare_bit)?;
         file.write_u32::<LittleEndian>(entry.id)?;
         file.write_u32::<LittleEndian>(entry.left)?;
@@ -309,7 +310,7 @@ pub fn pack(source_dir: &str, target_file: &str) -> std::io::Result<()> {
 
     file.write_all(&EMPTY_BUFFER)?;
 
-    for &entry in names
+    for &(_, entry) in header_1s
         .iter()
         .progress()
         .with_style(bar_style.clone())
@@ -338,13 +339,14 @@ pub fn pack(source_dir: &str, target_file: &str) -> std::io::Result<()> {
     let mut offset = 0;
     let mut entries = Vec::new();
 
-    for entry in header_1s
+    header_1s.sort_unstable_by_key(|(x, _)| x.id);
+
+    for (_, entry) in header_1s
         .into_iter()
         .progress_with_style(bar_style)
         .with_message("compressing and writing files to archive")
         .with_finish(ProgressFinish::AndLeave)
     {
-        let entry = names[entry.id as usize];
         let ext = entry
             .extension
             .into_iter()
