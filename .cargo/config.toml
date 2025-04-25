@@ -1,15 +1,17 @@
 [alias]
-translate = "run --release -- translate"
+r = "run --release --quiet --"
+
+translate = "r translate"
 tl = "translate"
 
-edit-translate = "run --release -- edit-translate"
+edit-translate = "r edit-translate"
 etl = "edit-translate"
 
-extract = "run --release -- extract"
+extract = "r extract"
 x = "extract"
 
-pack = "run --release -- pack"
+pack = "r pack"
 p = "pack"
 
-read-lines = "run --release -- read-lines"
+read-lines = "r read-lines"
 rl = "read-lines"

@@ -1,7 +1,7 @@
 use std::{
     fs::{self, File},
     io::{BufReader, BufWriter},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use clap::Parser;
@@ -18,46 +18,64 @@ fn main() {
             destination,
         } => {
             extract(
-                &mut BufReader::new(File::open(source).unwrap()),
-                Path::new(&destination),
+                &mut BufReader::new(
+                    File::open(source).expect("the file to extract is should exist"),
+                ),
+                &destination,
             )
-            .unwrap();
+            .expect("something went wrong during the extraction");
         }
         Action::Pack {
             source,
             destination,
-        } => pack(Path::new(&source), Path::new(&destination)).unwrap(),
+        } => pack(&source, &destination).expect("something went wrong during the repacking"),
         Action::Translate {
             source,
-            destination,
+            mut destination,
         } => {
             let source = Path::new(&source);
-            let mut pathbuf = PathBuf::from(destination);
-            if pathbuf.is_dir() {
-                pathbuf.push(source.file_name().unwrap());
+            if destination.is_dir() {
+                destination.push(source.file_name().expect("source should be a valid file"));
             }
-            let mut source = BufReader::new(File::open(source).unwrap());
-            let mut dest = BufWriter::new(File::create_new(&pathbuf).unwrap());
+            let mut source = BufReader::new(File::open(source).expect("source file should exist"));
+            let mut dest = BufWriter::new(
+                File::create_new(&destination).expect("destination file should not exist"),
+            );
             let mut translator = Translator::new(&mut source, &mut dest);
-            translator.translate().unwrap();
+            translator
+                .translate()
+                .expect("something went wrong during translation");
         }
-        Action::ReadLines { source, prefix } => {
-            let mut source = BufReader::new(File::open(source).unwrap());
-            for line in LineReader::new(&mut source).unwrap() {
+        Action::ReadLines {
+            source,
+            prefix,
+            ignore_duplicate,
+        } => {
+            let mut source =
+                BufReader::new(File::open(source).expect("source should be a valid file"));
+            let mut iter = LineReader::new(&mut source)
+                .expect("something went wrong while fetching lines")
+                .peekable();
+            while let Some(line) = iter.next() {
+                if ignore_duplicate {
+                    while iter.next_if_eq(&line).is_some() {}
+                }
                 println!("{}{}", prefix, String::from_utf8_lossy(&line));
             }
         }
         Action::EditTranslate { source } => {
             let new_source = source.with_extension("tmp");
-            fs::rename(&source, &new_source).expect("couldn't move old translated file");
-            let mut source_file =
-                BufReader::new(File::open(&new_source).expect("couldn't open old translated file"));
+            fs::rename(&source, &new_source).expect("should be able to move the given source file");
+            let mut source_file = BufReader::new(
+                File::open(&new_source).expect("should be able to open source file"),
+            );
             let mut destination_file = BufWriter::new(
-                File::create_new(&source).expect("couldn't open new translated file"),
+                File::create_new(&source).expect("should be able to open new source file"),
             );
             Translator::new(&mut source_file, &mut destination_file)
                 .translate()
                 .expect("something went wrong during the translation");
+            fs::remove_file(new_source).expect("should be able to remove given source file");
         }
     }
 }
