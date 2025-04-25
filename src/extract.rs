@@ -1,8 +1,6 @@
 use std::{
-    collections::{HashMap, HashSet},
-    fs::File,
+    collections::HashSet,
     io::{self, Read},
-    iter,
     path::Path,
 };
 
@@ -19,6 +17,7 @@ pub fn extract(reader: &mut dyn Read, destination: &Path) -> io::Result<()> {
         name: String,
     }
 
+    #[allow(dead_code)]
     struct FileInfo {
         offset: u64,
         uncompressed_size: u64,
@@ -119,9 +118,7 @@ pub fn extract(reader: &mut dyn Read, destination: &Path) -> io::Result<()> {
 
         let res = match lz4::block::decompress(&buffer, Some(entry.uncompressed_size as i32)) {
             Ok(x) => x,
-            Err(e) => {
-                eprintln!("error with file {}: {e}", structure.name);
-
+            Err(_) => {
                 std::fs::write(
                     format!("{}/{}", destination.display(), structure.name),
                     &buffer,

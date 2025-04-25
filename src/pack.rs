@@ -3,7 +3,8 @@ use std::{
     fs::{self, File},
     io::{BufWriter, Seek, SeekFrom, Write},
     ops::Index,
-    time::{Duration, Instant},
+    path::Path,
+    time::Duration,
 };
 
 use byteorder::{LittleEndian, WriteBytesExt};
@@ -214,7 +215,7 @@ fn generate_tree(all_paths: &'_ [SlicedPath]) -> Vec<TreeNode<'_>> {
     nodes
 }
 
-pub fn pack(source_dir: &str, target_file: &str) -> std::io::Result<()> {
+pub fn pack(source_dir: &Path, target_file: &Path) -> std::io::Result<()> {
     let mut file = BufWriter::new(File::create_new(target_file)?);
     let bar_style = ProgressStyle::default_bar()
         .template("[{elapsed_precise}] {wide_bar} {pos:>7}/{len:7} {msg}")
@@ -230,7 +231,7 @@ pub fn pack(source_dir: &str, target_file: &str) -> std::io::Result<()> {
         );
     progress.enable_steady_tick(Duration::from_millis(300));
 
-    let mut all_paths = glob(&format!("{source_dir}/**/*"))
+    let all_paths = glob(&format!("{}/**/*", source_dir.display()))
         .unwrap()
         .filter_map(Result::ok)
         .filter(|x| x.is_file())
@@ -353,7 +354,7 @@ pub fn pack(source_dir: &str, target_file: &str) -> std::io::Result<()> {
             .map(|x| x as char)
             .take_while(|&x| x != ' ')
             .collect::<String>();
-        let file_content = fs::read(format!("{}/{}.{}", source_dir, entry.file, ext))?;
+        let file_content = fs::read(format!("{}/{}.{}", source_dir.display(), entry.file, ext))?;
         let compressed = lz4::block::compress(
             &file_content,
             //None,

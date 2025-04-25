@@ -1,5 +1,5 @@
 [package]
-name = "packer"
+name = "thl-tools"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,3 +9,4 @@ clap = { version = "4.5.37", features = ["derive"] }
 glob = "0.3.2"
 indicatif = "0.17.11"
 lz4 = "1.28.1"
+rustyline = "15.0.0"
