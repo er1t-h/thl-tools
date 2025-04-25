@@ -42,3 +42,7 @@ cargo rl path/to/the/file.mbe [-p PREFIX]
 ```
 
 The default prefix is "> ".
+
+## How the files are composed.
+
+In the `resources/` folder, I put the `.ksy` files describing the file format of `.mvgl` files and `.mbe` files. For `.mbe` files, there's a lot I didn't really understood yet, but it's enough to replace texts in-game.
