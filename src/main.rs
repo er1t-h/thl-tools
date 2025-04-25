@@ -12,6 +12,7 @@ mod cli;
 
 fn main() -> Result<()> {
     let args = CliArgs::parse();
+    args.action.validate()?;
     match args.action {
         Action::Extract {
             source,

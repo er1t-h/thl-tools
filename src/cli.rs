@@ -1,5 +1,7 @@
 use std::{borrow::Cow, path::PathBuf};
 
+use anyhow::{Ok, Result, bail};
+
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum Action {
     /// Extracts a `.mvgl` archive to specified folder.
@@ -41,6 +43,45 @@ pub enum Action {
         /// The path to the `.mbe` file.
         source: PathBuf,
     },
+}
+
+impl Action {
+    pub fn validate(&self) -> Result<()> {
+        match self {
+            Self::Extract {
+                source,
+                destination,
+            }
+            | Self::Translate {
+                source,
+                destination,
+            } => {
+                if !source.is_file() {
+                    bail!("{} should be a valid file", source.display());
+                }
+                if destination.exists() {
+                    bail!("{} should not exist", destination.display());
+                }
+            }
+            Self::Pack {
+                source,
+                destination,
+            } => {
+                if !source.is_dir() {
+                    bail!("{} should be a valid directory", source.display())
+                }
+                if destination.exists() {
+                    bail!("{} should not exist", destination.display())
+                }
+            }
+            Self::EditTranslate { source } | Self::ReadLines { source, .. } => {
+                if !source.is_file() {
+                    bail!("{} should be a valid file", source.display())
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 ///
