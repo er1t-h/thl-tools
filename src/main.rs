@@ -1,16 +1,16 @@
 use std::{
     fs::{self, File},
     io::{BufReader, BufWriter},
-    path::Path,
 };
 
+use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use cli::{Action, CliArgs};
 use thl_tools::{LineReader, Translator, extract, pack};
 
 mod cli;
 
-fn main() {
+fn main() -> Result<()> {
     let args = CliArgs::parse();
     match args.action {
         Action::Extract {
@@ -19,42 +19,52 @@ fn main() {
         } => {
             extract(
                 &mut BufReader::new(
-                    File::open(source).expect("the file to extract is should exist"),
+                    File::open(&source)
+                        .with_context(|| format!("{} should exist", source.display()))?,
                 ),
                 &destination,
             )
-            .expect("something went wrong during the extraction");
+            .context("something went wrong during the extraction")?;
         }
         Action::Pack {
             source,
             destination,
-        } => pack(&source, &destination).expect("something went wrong during the repacking"),
+        } => pack(&source, &destination).context("something went wrong during the repacking")?,
         Action::Translate {
             source,
             mut destination,
         } => {
-            let source = Path::new(&source);
             if destination.is_dir() {
-                destination.push(source.file_name().expect("source should be a valid file"));
+                destination.push(
+                    source
+                        .file_name()
+                        .with_context(|| format!("{} should be a valid file", source.display()))?,
+                );
             }
-            let mut source = BufReader::new(File::open(source).expect("source file should exist"));
+            let mut source = BufReader::new(
+                File::open(&source)
+                    .with_context(|| format!("{} should exist", source.display()))?,
+            );
             let mut dest = BufWriter::new(
-                File::create_new(&destination).expect("destination file should not exist"),
+                File::create_new(&destination)
+                    .with_context(|| format!("{} should not exist", destination.display()))?,
             );
             let mut translator = Translator::new(&mut source, &mut dest);
             translator
                 .translate()
-                .expect("something went wrong during translation");
+                .context("something went wrong during translation")?;
         }
         Action::ReadLines {
             source,
             prefix,
             ignore_duplicate,
         } => {
-            let mut source =
-                BufReader::new(File::open(source).expect("source should be a valid file"));
+            let mut source = BufReader::new(
+                File::open(&source)
+                    .with_context(|| format!("{} should be a valid file", source.display()))?,
+            );
             let mut iter = LineReader::new(&mut source)
-                .expect("something went wrong while fetching lines")
+                .context("something went wrong while fetching lines")?
                 .peekable();
             while let Some(line) = iter.next() {
                 if ignore_duplicate {
@@ -65,17 +75,27 @@ fn main() {
         }
         Action::EditTranslate { source } => {
             let new_source = source.with_extension("tmp");
-            fs::rename(&source, &new_source).expect("should be able to move the given source file");
+            fs::rename(&source, &new_source).with_context(|| {
+                format!(
+                    "should be able to move {} to {} (maybe it already exists?)",
+                    source.display(),
+                    new_source.display()
+                )
+            })?;
             let mut source_file = BufReader::new(
-                File::open(&new_source).expect("should be able to open source file"),
+                File::open(&new_source)
+                    .with_context(|| format!("{} should be openable", new_source.display()))?,
             );
             let mut destination_file = BufWriter::new(
-                File::create_new(&source).expect("should be able to open new source file"),
+                File::create_new(&source)
+                    .with_context(|| format!("{} should be openable", source.display()))?,
             );
             Translator::new(&mut source_file, &mut destination_file)
                 .translate()
-                .expect("something went wrong during the translation");
-            fs::remove_file(new_source).expect("should be able to remove given source file");
+                .context("something went wrong during the translation")?;
+            fs::remove_file(&new_source)
+                .with_context(|| format!("{} should be removable", new_source.display()))?;
         }
     }
+    Ok(())
 }

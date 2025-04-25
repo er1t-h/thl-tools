@@ -251,18 +251,6 @@ pub fn pack(source_dir: &Path, target_file: &Path) -> std::io::Result<()> {
             }
         })
         .collect::<Vec<_>>();
-    for path in &all_paths {
-        println!(
-            "{:4}{}",
-            path.extension
-                .iter()
-                .copied()
-                .map(|x| x as char)
-                .collect::<String>(),
-            path.file
-        );
-    }
-
     progress.finish_with_message("finished collecting all files!");
 
     write!(file, "MDB1")?;

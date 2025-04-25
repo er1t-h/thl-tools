@@ -66,7 +66,6 @@ impl<'a> Translator<'a> {
         self.destination.write_all(b"CHNK")?;
 
         let nb_entries = self.source.read_u32::<LittleEndian>()?;
-        eprintln!("{:?}", nb_entries);
         self.destination.write_u32::<LittleEndian>(nb_entries)?;
 
         let mut rl = rustyline::DefaultEditor::new().unwrap();
