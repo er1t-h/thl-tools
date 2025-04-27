@@ -43,6 +43,24 @@ pub enum Action {
         /// The path to the `.mbe` file.
         source: PathBuf,
     },
+    /// Extracts the lines of the `.mbe` file into a CSV file.
+    ExtractAsCsv {
+        /// The path to the `.mbe` file.
+        source: PathBuf,
+        /// The path to the `.csv` file created.
+        destination: Option<PathBuf>,
+    },
+    /// Replaces the line from a mbe file with the content of the csv file.
+    ReintegrateCsv {
+        /// The CSV file to reintegrate.
+        csv_file: PathBuf,
+        /// The mbe file in which to put the lines. Defaults to `csv_file`, with extension changed
+        /// to `.mbe`
+        original_mbe_file: Option<PathBuf>,
+        /// The optional file in which the new data is stored.
+        #[arg(short, long)]
+        target: Option<PathBuf>,
+    },
 }
 
 impl Action {
@@ -59,7 +77,7 @@ impl Action {
                 if !source.is_file() {
                     bail!("{} should be a valid file", source.display());
                 }
-                if destination.exists() {
+                if destination.exists() && !destination.is_dir() {
                     bail!("{} should not exist", destination.display());
                 }
             }
@@ -77,6 +95,38 @@ impl Action {
             Self::EditTranslate { source } | Self::ReadLines { source, .. } => {
                 if !source.is_file() {
                     bail!("{} should be a valid file", source.display())
+                }
+            }
+            Self::ExtractAsCsv {
+                source,
+                destination,
+            } => {
+                if !source.is_file() {
+                    bail!("{} should be a valid file", source.display())
+                }
+                if let Some(dest) = destination {
+                    if dest.exists() {
+                        bail!("{} should not exist", dest.display());
+                    }
+                }
+            }
+            Self::ReintegrateCsv {
+                csv_file,
+                original_mbe_file,
+                target,
+            } => {
+                if !csv_file.is_file() {
+                    bail!("{} should be a valid file", csv_file.display())
+                }
+                if let Some(original) = original_mbe_file {
+                    if !original.is_file() {
+                        bail!("{} should be a valid file", original.display())
+                    }
+                }
+                if let Some(target) = target {
+                    if target.exists() {
+                        bail!("{} should not exist", target.display())
+                    }
                 }
             }
         }

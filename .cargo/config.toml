@@ -15,3 +15,6 @@ p = "pack"
 
 read-lines = "r read-lines"
 rl = "read-lines"
+
+extract-as-csv = "r extract-as-csv"
+xc = "extract-as-csv"

@@ -5,9 +5,18 @@ use byteorder::{LittleEndian, ReadBytesExt};
 pub struct LineReader<'a> {
     source: &'a mut dyn Read,
     remaining_entries: u32,
+    pic_voice_allowed: bool,
 }
 
 impl<'a> LineReader<'a> {
+    /// There are a lot of line containing only "pic_voice" that this iterator ignores by default.
+    pub fn allow_pic_voice(self, is_allowed: bool) -> Self {
+        Self {
+            pic_voice_allowed: is_allowed,
+            ..self
+        }
+    }
+
     pub fn new(source: &'a mut dyn Read) -> io::Result<Self> {
         let mut buffer = [0; 4];
         source.read_exact(&mut buffer)?;
@@ -39,6 +48,10 @@ impl<'a> LineReader<'a> {
         }
 
         source.read_exact(&mut buffer)?;
+        // For some reason, some files seem to have an extra u32 0
+        if &buffer == b"\0\0\0\0" {
+            source.read_exact(&mut buffer)?;
+        }
         assert_eq!(&buffer, b"CHNK");
 
         let nb_entries = source.read_u32::<LittleEndian>()?;
@@ -46,6 +59,7 @@ impl<'a> LineReader<'a> {
         Ok(Self {
             source,
             remaining_entries: nb_entries,
+            pic_voice_allowed: false,
         })
     }
 }
@@ -53,7 +67,7 @@ impl<'a> LineReader<'a> {
 impl Iterator for LineReader<'_> {
     type Item = Vec<u8>;
     fn next(&mut self) -> Option<Self::Item> {
-        let string_buffer = loop {
+        let mut string_buffer = loop {
             if let Some(x) = self.remaining_entries.checked_sub(1) {
                 self.remaining_entries = x;
             } else {
@@ -63,10 +77,11 @@ impl Iterator for LineReader<'_> {
             let string_size = self.source.read_u32::<LittleEndian>().ok()?;
             let mut string_buffer = vec![0; string_size as usize];
             self.source.read_exact(&mut string_buffer).ok()?;
-            if !string_buffer.starts_with(b"pic_voice") {
+            if self.pic_voice_allowed || !string_buffer.starts_with(b"pic_voice") {
                 break string_buffer;
             }
         };
+        while string_buffer.pop_if(|&mut x| x == 0).is_some() {}
         Some(string_buffer)
     }
 }
