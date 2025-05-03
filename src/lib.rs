@@ -1,3 +1,4 @@
+pub mod csv;
 mod extract;
 mod pack;
 mod read_lines;

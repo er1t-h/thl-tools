@@ -13,3 +13,5 @@ indicatif = "0.17.11"
 lz4 = "1.28.1"
 rustyline = "15.0.0"
 serde = { version = "1.0.219", features = ["derive"] }
+tempfile = "3.19.1"
+walkdir = "2.5.0"

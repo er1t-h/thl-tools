@@ -188,7 +188,12 @@ impl<'a> Patcher<'a> {
             let string_size = self.source.read_u32::<LittleEndian>()?;
             let mut string_buffer = vec![0; string_size as usize];
             self.source.read_exact(&mut string_buffer)?;
-            if string_buffer != last_line && !string_buffer.starts_with(b"pic_voice") {
+            if string_buffer != last_line
+                && !string_buffer
+                    .iter()
+                    .take_while(|&&x| x != 0)
+                    .all(|&x| x.is_ascii_alphanumeric() || x == b'_')
+            {
                 let slice = if let Some(pos) = string_buffer.iter().position(|&x| x == 0) {
                     &string_buffer[..pos]
                 } else {

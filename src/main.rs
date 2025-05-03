@@ -10,7 +10,12 @@ use cli::{Action, CliArgs};
 use csv::{ReaderBuilder, WriterBuilder};
 use rustyline::DefaultEditor;
 use thl_tools::{
-    LineReader, extract, pack,
+    LineReader,
+    csv::{
+        agglomerate::agglomerate_csv, extract::extract_as_csv, fuse::fuse_csv,
+        reintegrate::reintegrate_csv,
+    },
+    extract, pack,
     translate::{CSVStrategy, Patcher, ReadlineStrategy},
 };
 
@@ -112,57 +117,41 @@ fn main() -> Result<()> {
             destination,
         } => {
             let destination = destination.unwrap_or_else(|| source.with_extension("csv"));
-            let mut wtr = WriterBuilder::new().from_writer(
-                File::create_new(&destination)
+            extract_as_csv(
+                &mut File::open(&source)
+                    .with_context(|| format!("{} couldn't open", source.display()))?,
+                &File::create_new(&destination)
                     .with_context(|| format!("{} should not exist", destination.display()))?,
-            );
-            wtr.write_record([b"Translated".as_slice(), b"Original".as_slice()])?;
-            let mut file = File::open(source)?;
-            let mut iter = LineReader::new(&mut file)
-                .context("something went wrong while fetching lines")?
-                .peekable();
-            while let Some(line) = iter.next() {
-                while iter.next_if_eq(&line).is_some() {}
-                wtr.write_record([b"".as_slice(), &line])?;
-            }
+                None,
+                None,
+            )
+            .context("something went wrong during extraction as CSV")?;
         }
         Action::ReintegrateCsv {
             csv_file,
             original_mbe_file,
             target,
         } => {
-            let should_remove_original;
-            let original = if let Some(original) = original_mbe_file {
-                original
-            } else {
-                csv_file.with_extension("mbe")
-            };
-            let (original_path, destination) = if let Some(target) = target {
-                should_remove_original = false;
-                (original, target)
-            } else {
-                let tmp = original.with_extension("tmp");
-                fs::rename(&original, &tmp)?;
-                should_remove_original = true;
-                (original, tmp)
-            };
-
-            let mut original = File::open(&original_path)
-                .with_context(|| format!("{} should be openable", original_path.display()))?;
-            let mut destination = File::create_new(&destination)
-                .with_context(|| format!("{} should not exist", destination.display()))?;
-            let mut patcher = Patcher::new(&mut original, &mut destination);
-            patcher
-                .patch(CSVStrategy::new(
-                    ReaderBuilder::new()
-                        .from_path(&csv_file)
-                        .with_context(|| format!("{} should be openable", csv_file.display()))?,
-                ))
-                .context("error while patching the file")?;
-            if should_remove_original {
-                fs::remove_file(original_path)?;
-            }
+            reintegrate_csv(&csv_file, original_mbe_file.as_deref(), target.as_deref())
+                .context("something went wrong during CSV reintegration")?;
         }
+        Action::AgglomerateCsv {
+            directory,
+            destination,
+        } => agglomerate_csv(&directory, &destination).context("error while agglomerating CSVs")?,
+        Action::FuseCsv {
+            first_source,
+            second_source,
+            destination,
+        } => fuse_csv(&first_source, &second_source, &destination)
+            .context("error while fusing CSVs")?,
+        Action::AllInOneExtract {
+            game_path,
+            languages,
+        } => thl_tools::csv::all_in_one_extraction::all_in_one_extraction(&game_path, &languages)
+            .context("error while extracting ressources to CSV")?,
+        #[allow(unreachable_patterns)]
+        _ => todo!(),
     }
     Ok(())
 }

@@ -5,14 +5,14 @@ use byteorder::{LittleEndian, ReadBytesExt};
 pub struct LineReader<'a> {
     source: &'a mut dyn Read,
     remaining_entries: u32,
-    pic_voice_allowed: bool,
+    markers_allowed: bool,
 }
 
 impl<'a> LineReader<'a> {
-    /// There are a lot of line containing only "pic_voice" that this iterator ignores by default.
-    pub fn allow_pic_voice(self, is_allowed: bool) -> Self {
+    /// There are a lot of line containing only "pic_voice", "r00_*" that this iterator ignores by default.
+    pub fn allow_markers(self, is_allowed: bool) -> Self {
         Self {
-            pic_voice_allowed: is_allowed,
+            markers_allowed: is_allowed,
             ..self
         }
     }
@@ -59,7 +59,7 @@ impl<'a> LineReader<'a> {
         Ok(Self {
             source,
             remaining_entries: nb_entries,
-            pic_voice_allowed: false,
+            markers_allowed: false,
         })
     }
 }
@@ -77,7 +77,12 @@ impl Iterator for LineReader<'_> {
             let string_size = self.source.read_u32::<LittleEndian>().ok()?;
             let mut string_buffer = vec![0; string_size as usize];
             self.source.read_exact(&mut string_buffer).ok()?;
-            if self.pic_voice_allowed || !string_buffer.starts_with(b"pic_voice") {
+            if self.markers_allowed
+                || !string_buffer
+                    .iter()
+                    .take_while(|&&x| x != 0)
+                    .all(|&x| x.is_ascii_alphanumeric() || x == b'_')
+            {
                 break string_buffer;
             }
         };

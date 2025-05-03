@@ -1,6 +1,7 @@
 use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::{Ok, Result, bail};
+use thl_tools::csv::all_in_one_extraction::Languages;
 
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum Action {
@@ -60,6 +61,20 @@ pub enum Action {
         /// The optional file in which the new data is stored.
         #[arg(short, long)]
         target: Option<PathBuf>,
+    },
+    AgglomerateCsv {
+        directory: PathBuf,
+        destination: PathBuf,
+    },
+    FuseCsv {
+        first_source: PathBuf,
+        second_source: PathBuf,
+        destination: PathBuf,
+    },
+    AllInOneExtract {
+        game_path: PathBuf,
+        #[arg(value_delimiter = ',')]
+        languages: Vec<Languages>,
     },
 }
 
@@ -127,6 +142,43 @@ impl Action {
                     if target.exists() {
                         bail!("{} should not exist", target.display())
                     }
+                }
+            }
+            Self::AgglomerateCsv {
+                directory,
+                destination,
+            } => {
+                if !directory.is_dir() {
+                    bail!("{} should be a valid directory", directory.display());
+                }
+                if destination.exists() {
+                    bail!("{} shouldn't exist", destination.display());
+                }
+            }
+            Self::FuseCsv {
+                first_source,
+                second_source,
+                destination,
+            } => {
+                if !first_source.is_dir() {
+                    bail!("{} should be a valid directory", first_source.display());
+                }
+                if !second_source.is_dir() {
+                    bail!("{} should be a valid directory", second_source.display());
+                }
+                if destination.exists() {
+                    bail!("{} shouldn't exist", destination.display());
+                }
+            }
+            Self::AllInOneExtract {
+                game_path,
+                languages,
+            } => {
+                if !game_path.is_dir() {
+                    bail!("{} should be a valid directory", game_path.display());
+                }
+                if languages.is_empty() {
+                    bail!("at least one language should be selected");
                 }
             }
         }
