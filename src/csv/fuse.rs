@@ -78,6 +78,7 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
             if byte_record_1.is_empty() {
                 byte_record_1.push_field(b"");
                 byte_record_1.push_field(b"");
+                byte_record_1.push_field(b"");
             }
             byte_record_1.push_field(byte_record_2.get(1).unwrap_or(b""));
             destination.write_record(&byte_record_1)?;

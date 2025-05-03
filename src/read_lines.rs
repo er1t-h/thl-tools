@@ -1,11 +1,34 @@
-use std::io::{self, Read};
+use std::{
+    io::{self, Read},
+    iter::Peekable,
+    vec::IntoIter,
+};
 
 use byteorder::{LittleEndian, ReadBytesExt};
+
+use crate::PlaceholderOrCharacter;
 
 pub struct LineReader<'a> {
     source: &'a mut dyn Read,
     remaining_entries: u32,
     markers_allowed: bool,
+}
+
+pub struct DialogueReader<'a> {
+    characters: IntoIter<PlaceholderOrCharacter>,
+    line_reader: Peekable<LineReader<'a>>,
+}
+
+trait Pushable {
+    fn push(&mut self, c: PlaceholderOrCharacter);
+}
+impl Pushable for Vec<PlaceholderOrCharacter> {
+    fn push(&mut self, c: PlaceholderOrCharacter) {
+        self.push(c);
+    }
+}
+impl Pushable for () {
+    fn push(&mut self, _: PlaceholderOrCharacter) {}
 }
 
 impl<'a> LineReader<'a> {
@@ -17,7 +40,7 @@ impl<'a> LineReader<'a> {
         }
     }
 
-    pub fn new(source: &'a mut dyn Read) -> io::Result<Self> {
+    fn new_inner(source: &'a mut dyn Read, characters: &mut dyn Pushable) -> io::Result<Self> {
         let mut buffer = [0; 4];
         source.read_exact(&mut buffer)?;
         assert_eq!(&buffer, b"EXPA");
@@ -42,8 +65,13 @@ impl<'a> LineReader<'a> {
             let length = source.read_u32::<LittleEndian>()?;
             let nb = source.read_u32::<LittleEndian>()?;
 
-            for _ in 0..nb * (length / 4) {
-                source.read_u32::<LittleEndian>()?;
+            for _ in 0..nb {
+                let _unk = source.read_u32::<LittleEndian>()?;
+                let character = source.read_u32::<LittleEndian>()?;
+                characters.push(PlaceholderOrCharacter::from(character));
+                for _ in 0..length / 4 - 2 {
+                    source.read_u32::<LittleEndian>()?;
+                }
             }
         }
 
@@ -61,6 +89,10 @@ impl<'a> LineReader<'a> {
             remaining_entries: nb_entries,
             markers_allowed: false,
         })
+    }
+
+    pub fn new(source: &'a mut dyn Read) -> io::Result<Self> {
+        Self::new_inner(source, &mut ())
     }
 }
 
@@ -88,5 +120,27 @@ impl Iterator for LineReader<'_> {
         };
         while string_buffer.pop_if(|&mut x| x == 0).is_some() {}
         Some(string_buffer)
+    }
+}
+
+impl<'a> DialogueReader<'a> {
+    pub fn new(source: &'a mut dyn Read) -> io::Result<Self> {
+        let mut v = Vec::new();
+        let line_reader = LineReader::new_inner(source, &mut v)?;
+        Ok(Self {
+            line_reader: line_reader.peekable(),
+            characters: v.into_iter(),
+        })
+    }
+}
+
+impl Iterator for DialogueReader<'_> {
+    type Item = (PlaceholderOrCharacter, Vec<u8>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next_dialogue = self.line_reader.next()?;
+        while self.line_reader.next_if_eq(&next_dialogue).is_some() {}
+        let next_char = self.characters.next()?;
+        Some((next_char, next_dialogue))
     }
 }

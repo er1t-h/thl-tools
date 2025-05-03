@@ -9,7 +9,7 @@ use cli::{Action, CliArgs};
 use csv::Reader;
 use rustyline::DefaultEditor;
 use thl_tools::{
-    LineReader,
+    DialogueReader,
     csv::{
         agglomerate::agglomerate_csv, extract::extract_as_csv, fuse::fuse_csv,
         reintegrate::reintegrate_csv,
@@ -72,23 +72,21 @@ fn main() -> Result<()> {
                 ))
                 .context("something went wrong during translation")?;
         }
-        Action::ReadLines {
-            source,
-            prefix,
-            ignore_duplicate,
-        } => {
+        Action::ReadLines { source, prefix, .. } => {
             let mut source = BufReader::new(
                 File::open(&source)
                     .with_context(|| format!("{} should be a valid file", source.display()))?,
             );
-            let mut iter = LineReader::new(&mut source)
+            let iter = DialogueReader::new(&mut source)
                 .context("something went wrong while fetching lines")?
                 .peekable();
-            while let Some(line) = iter.next() {
-                if ignore_duplicate {
-                    while iter.next_if_eq(&line).is_some() {}
-                }
-                println!("{}{}", prefix, String::from_utf8_lossy(&line));
+            for (character, line) in iter {
+                println!(
+                    "{}{}: {}",
+                    prefix,
+                    character.as_str(),
+                    String::from_utf8_lossy(&line)
+                );
             }
         }
         Action::EditTranslate { source } => {
@@ -128,6 +126,7 @@ fn main() -> Result<()> {
                     .with_context(|| format!("{} should not exist", destination.display()))?,
                 None,
                 None,
+                true,
             )
             .context("something went wrong during extraction as CSV")?;
         }
