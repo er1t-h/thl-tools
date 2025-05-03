@@ -215,8 +215,8 @@ fn generate_tree(all_paths: &'_ [SlicedPath]) -> Vec<TreeNode<'_>> {
     nodes
 }
 
-pub fn pack(source_dir: &Path, target_file: &Path) -> std::io::Result<()> {
-    let mut file = BufWriter::new(File::create_new(target_file)?);
+pub fn pack(source_dir: &Path, target_file: &mut File) -> std::io::Result<()> {
+    let mut file = BufWriter::new(target_file);
     let bar_style = ProgressStyle::default_bar()
         .template("[{elapsed_precise}] {wide_bar} {pos:>7}/{len:7} {msg}")
         .unwrap();

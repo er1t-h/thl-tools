@@ -2,7 +2,6 @@ use std::{
     fs::{self, File},
     io::{self, BufReader},
     path::Path,
-    time::Duration,
 };
 
 use clap::builder::OsStr;
@@ -10,14 +9,14 @@ use tempfile::TempDir;
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
-pub enum Languages {
+pub enum Language {
     English,
     Japanese,
     SimplifiedChinese,
     TraditionalChinese,
 }
 
-impl Languages {
+impl Language {
     fn as_column_name(self) -> &'static str {
         match self {
             Self::English => "English",
@@ -37,7 +36,7 @@ impl Languages {
     }
 }
 
-pub fn all_in_one_extraction(game_path: &Path, languages: &[Languages]) -> io::Result<()> {
+pub fn all_in_one_extraction(game_path: &Path, languages: &[Language]) -> io::Result<()> {
     let extraction_dir = TempDir::new()?;
 
     let languages_dir = std::iter::from_fn(|| Some(TempDir::new()))

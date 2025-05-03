@@ -67,6 +67,16 @@ impl<H: rustyline::Helper, I: rustyline::history::History> GetLine for ReadlineS
         }
     }
 }
+pub struct NoStrategy;
+impl GetLine for NoStrategy {
+    type Error = Infallible;
+    fn next_line<'a, 's>(&'s mut self, input: &'a [u8]) -> Result<Cow<'a, [u8]>, Self::Error>
+    where
+        's: 'a,
+    {
+        Ok(Cow::Borrowed(input))
+    }
+}
 
 pub struct CSVStrategy<R> {
     source: csv::ByteRecordsIntoIter<R>,

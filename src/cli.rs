@@ -1,7 +1,7 @@
 use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::{Ok, Result, bail};
-use thl_tools::csv::all_in_one_extraction::Languages;
+use thl_tools::csv::all_in_one_extraction::Language;
 
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum Action {
@@ -74,7 +74,12 @@ pub enum Action {
     AllInOneExtract {
         game_path: PathBuf,
         #[arg(value_delimiter = ',')]
-        languages: Vec<Languages>,
+        languages: Vec<Language>,
+    },
+    AllInOneRepack {
+        full_text: PathBuf,
+        reference_mvgl: PathBuf,
+        destination: PathBuf,
     },
 }
 
@@ -179,6 +184,21 @@ impl Action {
                 }
                 if languages.is_empty() {
                     bail!("at least one language should be selected");
+                }
+            }
+            Self::AllInOneRepack {
+                full_text,
+                reference_mvgl,
+                destination,
+            } => {
+                if !full_text.exists() {
+                    bail!("{} should exist", full_text.display());
+                }
+                if !reference_mvgl.exists() {
+                    bail!("{} should exist", reference_mvgl.display());
+                }
+                if destination.exists() {
+                    bail!("{} shouldn't exist", destination.display());
                 }
             }
         }

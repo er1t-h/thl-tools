@@ -6,6 +6,7 @@ use std::{
 use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use cli::{Action, CliArgs};
+use csv::Reader;
 use rustyline::DefaultEditor;
 use thl_tools::{
     LineReader,
@@ -39,7 +40,12 @@ fn main() -> Result<()> {
         Action::Pack {
             source,
             destination,
-        } => pack(&source, &destination).context("something went wrong during the repacking")?,
+        } => pack(
+            &source,
+            &mut File::create_new(&destination)
+                .with_context(|| format!("{} shouldn't exist", destination.display()))?,
+        )
+        .context("something went wrong during the repacking")?,
         Action::Translate {
             source,
             mut destination,
@@ -148,6 +154,15 @@ fn main() -> Result<()> {
             languages,
         } => thl_tools::csv::all_in_one_extraction::all_in_one_extraction(&game_path, &languages)
             .context("error while extracting ressources to CSV")?,
+        Action::AllInOneRepack {
+            full_text,
+            reference_mvgl,
+            destination,
+        } => thl_tools::csv::all_in_one_repack::all_in_one_repack(
+            Reader::from_path(full_text)?,
+            &mut File::open(reference_mvgl)?,
+            &mut File::create(destination)?,
+        )?,
         #[allow(unreachable_patterns)]
         _ => todo!(),
     }
