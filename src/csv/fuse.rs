@@ -6,27 +6,29 @@ use walkdir::WalkDir;
 pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -> io::Result<()> {
     let first_source_entries = WalkDir::new(first_source)
         .into_iter()
-        .filter_entry(|x| {
-            !x.path().starts_with(".") && x.path().extension() == Some(OsStr::new("csv"))
-        })
+        .filter_entry(|x| !x.path().starts_with("."))
         .collect::<Result<Vec<_>, _>>()?;
 
     let second_source_entries = WalkDir::new(second_source)
         .into_iter()
-        .filter_entry(|x| {
-            !x.path().starts_with(".") && x.path().extension() == Some(OsStr::new("csv"))
-        })
+        .filter_entry(|x| !x.path().starts_with("."))
         .collect::<Result<Vec<_>, _>>()?;
 
     let first_files_path = first_source_entries
         .iter()
-        .filter(|x| x.file_type().is_file() || x.file_type().is_symlink())
+        .filter(|x| {
+            (x.file_type().is_file() || x.file_type().is_symlink())
+                && x.path().extension() == Some(OsStr::new("csv"))
+        })
         .flat_map(|x| x.path().strip_prefix(first_source))
         .collect::<HashSet<_>>();
 
     let second_files_path = second_source_entries
         .iter()
-        .filter(|x| x.file_type().is_file() || x.file_type().is_symlink())
+        .filter(|x| {
+            (x.file_type().is_file() || x.file_type().is_symlink())
+                && x.path().extension() == Some(OsStr::new("csv"))
+        })
         .flat_map(|x| x.path().strip_prefix(second_source))
         .collect::<HashSet<_>>();
 
@@ -43,10 +45,7 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
     let mut byte_record_1 = ByteRecord::new();
     let mut byte_record_2 = ByteRecord::new();
 
-    for path in first_files_path
-        .intersection(&second_files_path)
-        .inspect(|x| eprintln!("{}", x.display()))
-    {
+    for path in first_files_path.intersection(&second_files_path) {
         byte_record_1.clear();
         byte_record_2.clear();
         let mut first_source = first_source.to_path_buf();

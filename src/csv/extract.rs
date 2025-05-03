@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fs::File, io, path::Path};
+use std::{fs::File, io};
 
 use csv::WriterBuilder;
 

@@ -24,7 +24,6 @@ pub fn agglomerate_csv(source: &Path, destination: &Path) -> io::Result<()> {
             continue;
         }
         let path = file.path();
-        eprintln!("{}", path.display());
         let mut file = csv::ReaderBuilder::new().from_path(path)?;
         if i == 0 {
             file.byte_headers()?.clone_into(&mut record);

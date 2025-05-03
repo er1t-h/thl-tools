@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     fs::{self, File},
     io::{BufReader, BufWriter},
 };
@@ -7,7 +6,6 @@ use std::{
 use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use cli::{Action, CliArgs};
-use csv::{ReaderBuilder, WriterBuilder};
 use rustyline::DefaultEditor;
 use thl_tools::{
     LineReader,
@@ -16,7 +14,7 @@ use thl_tools::{
         reintegrate::reintegrate_csv,
     },
     extract, pack,
-    translate::{CSVStrategy, Patcher, ReadlineStrategy},
+    translate::{Patcher, ReadlineStrategy},
 };
 
 mod cli;
