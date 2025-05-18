@@ -80,7 +80,7 @@ fn main() -> Result<()> {
             let iter = DialogueReader::new(&mut source)
                 .context("something went wrong while fetching lines")?
                 .peekable();
-            for (character, line) in iter {
+            for (character, _, line) in iter {
                 println!(
                     "{}{}: {}",
                     prefix,
@@ -126,7 +126,6 @@ fn main() -> Result<()> {
                     .with_context(|| format!("{} should not exist", destination.display()))?,
                 None,
                 None,
-                true,
             )
             .context("something went wrong during extraction as CSV")?;
         }

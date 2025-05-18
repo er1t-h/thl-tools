@@ -1,6 +1,5 @@
 use std::{
     io::{self, Read},
-    iter::Peekable,
     vec::IntoIter,
 };
 
@@ -11,47 +10,40 @@ use crate::PlaceholderOrCharacter;
 pub struct LineReader<'a> {
     source: &'a mut dyn Read,
     remaining_entries: u32,
-    markers_allowed: bool,
+    entry_id_difference: u32,
+    last_entry_id: u32,
 }
 
 pub struct DialogueReader<'a> {
     characters: IntoIter<PlaceholderOrCharacter>,
-    line_reader: Peekable<LineReader<'a>>,
+    line_reader: LineReader<'a>,
 }
 
-trait Pushable {
-    fn push(&mut self, c: PlaceholderOrCharacter);
+trait Pushable<T> {
+    fn push(&mut self, c: T);
 }
-impl Pushable for Vec<PlaceholderOrCharacter> {
-    fn push(&mut self, c: PlaceholderOrCharacter) {
+impl<T> Pushable<T> for Vec<T> {
+    fn push(&mut self, c: T) {
         self.push(c);
     }
 }
-impl Pushable for () {
-    fn push(&mut self, _: PlaceholderOrCharacter) {}
+impl<T> Pushable<T> for () {
+    fn push(&mut self, _: T) {}
 }
 
 impl<'a> LineReader<'a> {
-    /// There are a lot of line containing only "pic_voice", "r00_*" that this iterator ignores by default.
-    pub fn allow_markers(self, is_allowed: bool) -> Self {
-        Self {
-            markers_allowed: is_allowed,
-            ..self
-        }
-    }
-
-    fn new_inner(source: &'a mut dyn Read, characters: &mut dyn Pushable) -> io::Result<Self> {
+    fn new_inner(
+        source: &'a mut dyn Read,
+        characters: &mut dyn Pushable<PlaceholderOrCharacter>,
+    ) -> io::Result<Self> {
         let mut buffer = [0; 4];
         source.read_exact(&mut buffer)?;
         assert_eq!(&buffer, b"EXPA");
 
         let number_of_sheets = source.read_u32::<LittleEndian>()?;
+        let mut entry_id_difference = 0;
 
         for i in 0..number_of_sheets {
-            if i != 0 {
-                source.read_exact(&mut buffer)?;
-            }
-
             let length_of_entry_name = source.read_u32::<LittleEndian>()?;
 
             let mut name = vec![0; length_of_entry_name as usize];
@@ -64,9 +56,15 @@ impl<'a> LineReader<'a> {
 
             let length = source.read_u32::<LittleEndian>()?;
             let nb = source.read_u32::<LittleEndian>()?;
+            if i == 0 {
+                entry_id_difference = length;
+                if (length_of_entry_name + num_of_entries * 4) % 8 != 0 {
+                    let _ = source.read_u32::<LittleEndian>()?;
+                }
+            }
 
             for _ in 0..nb {
-                let _unk = source.read_u32::<LittleEndian>()?;
+                let _id = source.read_u32::<LittleEndian>()?;
                 let character = source.read_u32::<LittleEndian>()?;
                 characters.push(PlaceholderOrCharacter::from(character));
                 for _ in 0..length / 4 - 2 {
@@ -76,10 +74,6 @@ impl<'a> LineReader<'a> {
         }
 
         source.read_exact(&mut buffer)?;
-        // For some reason, some files seem to have an extra u32 0
-        if &buffer == b"\0\0\0\0" {
-            source.read_exact(&mut buffer)?;
-        }
         assert_eq!(&buffer, b"CHNK");
 
         let nb_entries = source.read_u32::<LittleEndian>()?;
@@ -87,60 +81,67 @@ impl<'a> LineReader<'a> {
         Ok(Self {
             source,
             remaining_entries: nb_entries,
-            markers_allowed: false,
+            entry_id_difference,
+            last_entry_id: 0,
         })
     }
 
     pub fn new(source: &'a mut dyn Read) -> io::Result<Self> {
         Self::new_inner(source, &mut ())
     }
-}
 
-impl Iterator for LineReader<'_> {
-    type Item = Vec<u8>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let mut string_buffer = loop {
+    pub fn next_with_entry_id(&mut self) -> Option<(Vec<u8>, u32)> {
+        let (mut string_buffer, id) = loop {
             if let Some(x) = self.remaining_entries.checked_sub(1) {
                 self.remaining_entries = x;
             } else {
                 return None;
             }
-            let _unk = self.source.read_u32::<LittleEndian>().ok()?;
+            let id = self.source.read_u32::<LittleEndian>().ok()?;
+            if self.last_entry_id == 0 {
+                self.last_entry_id = id;
+            }
             let string_size = self.source.read_u32::<LittleEndian>().ok()?;
-            let mut string_buffer = vec![0; string_size as usize];
-            self.source.read_exact(&mut string_buffer).ok()?;
-            if self.markers_allowed
-                || !string_buffer
-                    .iter()
-                    .take_while(|&&x| x != 0)
-                    .all(|&x| x.is_ascii_alphanumeric() || x == b'_')
-            {
-                break string_buffer;
+            if (id - self.last_entry_id) % self.entry_id_difference == 0 {
+                let mut string_buffer = vec![0; string_size as usize];
+                self.last_entry_id = id;
+                self.source.read_exact(&mut string_buffer).ok()?;
+                break (string_buffer, id);
+            } else {
+                io::copy(&mut self.source.take(string_size as u64), &mut io::sink()).unwrap();
             }
         };
-        while string_buffer.pop_if(|&mut x| x == 0).is_some() {}
-        Some(string_buffer)
+        while string_buffer.last() == Some(&b'\0') {
+            string_buffer.pop();
+        }
+        Some((string_buffer, id))
+    }
+}
+
+impl Iterator for LineReader<'_> {
+    type Item = Vec<u8>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_with_entry_id().map(|x| x.0)
     }
 }
 
 impl<'a> DialogueReader<'a> {
     pub fn new(source: &'a mut dyn Read) -> io::Result<Self> {
-        let mut v = Vec::new();
-        let line_reader = LineReader::new_inner(source, &mut v)?;
+        let mut characters = Vec::new();
+        let line_reader = LineReader::new_inner(source, &mut characters)?;
         Ok(Self {
-            line_reader: line_reader.peekable(),
-            characters: v.into_iter(),
+            line_reader,
+            characters: characters.into_iter(),
         })
     }
 }
 
 impl Iterator for DialogueReader<'_> {
-    type Item = (PlaceholderOrCharacter, Vec<u8>);
+    type Item = (PlaceholderOrCharacter, u32, Vec<u8>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next_dialogue = self.line_reader.next()?;
-        while self.line_reader.next_if_eq(&next_dialogue).is_some() {}
+        let (next_dialogue, message_id) = self.line_reader.next_with_entry_id()?;
         let next_char = self.characters.next()?;
-        Some((next_char, next_dialogue))
+        Some((next_char, message_id, next_dialogue))
     }
 }

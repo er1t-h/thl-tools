@@ -42,8 +42,7 @@ pub fn all_in_one_extraction(game_path: &Path, languages: &[Language]) -> io::Re
     let languages_dir = std::iter::from_fn(|| Some(TempDir::new()))
         .take(languages.len())
         .collect::<Result<Vec<_>, _>>()?;
-    for (i, (&language, extracted_language_dir)) in languages.iter().zip(&languages_dir).enumerate()
-    {
+    for (&language, extracted_language_dir) in languages.iter().zip(&languages_dir) {
         eprintln!("before extract...");
         crate::extract(
             &mut BufReader::new(File::open(
@@ -77,7 +76,6 @@ pub fn all_in_one_extraction(game_path: &Path, languages: &[Language]) -> io::Re
                 &destination,
                 Some(b"Translated".as_slice()),
                 Some(language.as_column_name().as_bytes()),
-                i == 0,
             )?;
             eprintln!("done");
         }
