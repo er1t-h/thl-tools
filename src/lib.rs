@@ -1,5 +1,7 @@
 pub mod csv;
 mod extract;
+pub mod mbe_file;
+mod offset_wrapper;
 mod pack;
 mod read_lines;
 pub mod translate;
@@ -10,11 +12,12 @@ pub use extract::extract;
 use num::FromPrimitive;
 use num_derive::FromPrimitive;
 pub use pack::pack;
-pub use read_lines::{DialogueReader, LineReader};
+pub use read_lines::DialogueReader;
 
 #[repr(u32)]
 #[derive(FromPrimitive, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Character {
+    None = 0x0,
     Takumi = 0x1,
     Takemaru = 0x2,
     Hiruko = 0x3,
@@ -31,16 +34,19 @@ pub enum Character {
     Karua = 0xCA,
     KaruaChildForm = 0xCB,
     TakumisMom = 0xC9,
+    SireiCutscene = 0x12E,
     Announcement = 0x130,
     Thought = 0x131,
     PASystem = 0x132,
     Lock = 0x134,
     Door = 0x136,
+    Text = 0xCCCCCCCC,
 }
 
 impl Character {
     pub fn name(self) -> &'static str {
         match self {
+            Self::None => "None",
             Self::Takumi => "Takumi",
             Self::Takemaru => "Takemaru",
             Self::Hiruko => "Hiruko",
@@ -57,11 +63,13 @@ impl Character {
             Self::Karua => "Karua",
             Self::KaruaChildForm => "Karua (Child)",
             Self::TakumisMom => "Takumi's Mom",
+            Self::SireiCutscene => "Sirei (Cutscene)",
             Self::Announcement => "Announcement",
             Self::Thought => "Thought",
             Self::PASystem => "PA System",
             Self::Lock => "Lock",
             Self::Door => "Door",
+            Self::Text => "Text",
         }
     }
 }

@@ -64,12 +64,12 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
 
         let mut source_2 = csv::Reader::from_path(second_source)?;
         let mut source_1 = csv::Reader::from_path(first_source)?;
-        let number_of_language_in_src_1 = source_1.byte_headers().unwrap().len() - 3;
+        let number_of_language_in_src_1 = source_1.byte_headers().unwrap().len() - 4;
 
         let header = {
             let mut first_header = source_1.byte_headers().unwrap().clone();
             let second_header = source_2.byte_headers().unwrap();
-            first_header.push_field(&second_header[3]);
+            first_header.push_field(&second_header[4]);
             first_header
         };
 
@@ -81,7 +81,17 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
             source_1.byte_records().flatten(),
             source_2.byte_records().flatten(),
             vec![2],
-        ) {
+        )
+        .sorted_by_key(|x| {
+            String::from_utf8_lossy(
+                x.0.as_ref()
+                    .unwrap_or_else(|| x.1.as_ref().unwrap())
+                    .get(2)
+                    .unwrap(),
+            )
+            .parse::<u32>()
+            .unwrap()
+        }) {
             match (left, right) {
                 (None, None) => continue,
                 (None, Some(right)) => {
@@ -91,12 +101,14 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
                     byte_record.push_field(right.get(1).unwrap());
                     // Message ID
                     byte_record.push_field(right.get(2).unwrap());
+                    // Is Important
+                    byte_record.push_field(right.get(3).unwrap());
                     // Left Text
                     for _ in 0..number_of_language_in_src_1 {
                         byte_record.push_field(b"");
                     }
                     // Right Text
-                    byte_record.push_field(right.get(3).unwrap());
+                    byte_record.push_field(right.get(4).unwrap());
                 }
                 (Some(left), None) => {
                     // Translated
@@ -105,8 +117,10 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
                     byte_record.push_field(left.get(1).unwrap());
                     // Message ID
                     byte_record.push_field(left.get(2).unwrap());
+                    // Is Important
+                    byte_record.push_field(left.get(3).unwrap());
                     // Left Texts
-                    for fields in 3..left.len() {
+                    for fields in 4..left.len() {
                         byte_record.push_field(left.get(fields).unwrap());
                     }
                     // Right Text
@@ -119,14 +133,17 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
                     byte_record.push_field(left.get(1).unwrap());
                     // Message ID
                     byte_record.push_field(left.get(2).unwrap());
+                    // Is Important
+                    byte_record.push_field(left.get(3).unwrap());
                     // Left Texts
-                    for fields in 3..left.len() {
+                    for fields in 4..left.len() {
                         byte_record.push_field(left.get(fields).unwrap());
                     }
                     // Right Text
-                    byte_record.push_field(right.get(3).unwrap());
+                    byte_record.push_field(right.get(4).unwrap());
                 }
             }
+            eprintln!("{byte_record:?}");
             destination.write_byte_record(&byte_record)?;
             byte_record.clear();
         }

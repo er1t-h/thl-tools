@@ -1,8 +1,8 @@
-use std::{borrow::Cow, fs::File, io};
+use std::{fs::File, io};
 
 use csv::WriterBuilder;
 
-use crate::DialogueReader;
+use crate::{DialogueReader, mbe_file::MBEFile};
 
 pub fn extract_as_csv(
     source: &mut File,
@@ -15,16 +15,18 @@ pub fn extract_as_csv(
         translated_name.unwrap_or(b"Translated"),
         b"Character Name",
         b"Entry ID",
+        b"Is Important",
         file_language_name.unwrap_or(b"Original"),
     ])?;
-    let iter = DialogueReader::new(source)?;
-    for (character, entry_id, line) in iter {
-        let char_name = character.map_or(Cow::Borrowed(""), |x| x.as_str());
+    let iter = MBEFile::parse(source)?.messages;
+    for message in iter {
+        let char_name = message.character.map_or("", |x| x.name());
         wtr.write_record([
             b"".as_slice(),
             char_name.as_bytes(),
-            entry_id.to_string().as_bytes(),
-            &line,
+            message.message_id.to_string().as_bytes(),
+            message.is_important().to_string().as_bytes(),
+            &message.text,
         ])?;
     }
     Ok(())

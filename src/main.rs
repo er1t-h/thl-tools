@@ -9,12 +9,13 @@ use cli::{Action, CliArgs};
 use csv::Reader;
 use rustyline::DefaultEditor;
 use thl_tools::{
-    DialogueReader,
     csv::{
         agglomerate::agglomerate_csv, extract::extract_as_csv, fuse::fuse_csv,
         reintegrate::reintegrate_csv,
     },
-    extract, pack,
+    extract,
+    mbe_file::MBEFile,
+    pack,
     translate::{Patcher, ReadlineStrategy},
 };
 
@@ -77,19 +78,34 @@ fn main() -> Result<()> {
                 File::open(&source)
                     .with_context(|| format!("{} should be a valid file", source.display()))?,
             );
-            let iter = DialogueReader::new(&mut source)
-                .context("something went wrong while fetching lines")?
-                .peekable();
-            for (character, _, line) in iter {
-                if let Some(character) = character {
-                    println!(
-                        "{}{}: {}",
-                        prefix,
-                        character.as_str(),
-                        String::from_utf8_lossy(&line)
-                    );
-                }
+            let file =
+                MBEFile::parse(&mut source).context("something went wrong while parsing file")?;
+            for message in file
+                .messages
+                .into_iter()
+                .flat_map(|x| x.try_into_important())
+            {
+                println!(
+                    "{}{} ({:5}): {}",
+                    prefix,
+                    message.character.name(),
+                    message.message_id,
+                    String::from_utf8_lossy(&message.text)
+                )
             }
+            //let iter = DialogueReader::new(&mut source)
+            //    .context("something went wrong while fetching lines")?
+            //    .peekable();
+            //for (character, _, line) in iter {
+            //    if let Some(character) = character {
+            //        println!(
+            //            "{}{}: {}",
+            //            prefix,
+            //            character.as_str(),
+            //            String::from_utf8_lossy(&line)
+            //        );
+            //    }
+            //}
         }
         Action::EditTranslate { source } => {
             let new_source = source.with_extension("tmp");
