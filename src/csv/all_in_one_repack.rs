@@ -7,7 +7,7 @@ use csv::Reader;
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
-use crate::translate::{CSVStrategy, NoStrategy};
+use crate::mbe_file::MBEFile;
 
 pub fn all_in_one_repack<F: Read>(
     full_text: Reader<F>,
@@ -29,24 +29,32 @@ pub fn all_in_one_repack<F: Read>(
             fs::create_dir_all(path)?;
             continue;
         }
-        let dest = translation_dir.path().join(file_relative_path);
-
-        eprintln!("opening {}", file.path().display());
-        let mut source = File::open(file.path())?;
-        eprintln!("creating {}", dest.display());
-        let mut dest = File::create_new(dest)?;
-        let mut patcher = crate::translate::Patcher::new(&mut source, &mut dest);
         let csv_path = csv_dir
             .path()
             .join(file_relative_path)
             .with_extension("csv");
-        eprintln!("reading from {}", csv_path.display());
+        let dest = translation_dir.path().join(file_relative_path);
+
+        let mut source = MBEFile::from_path(&file.path())?;
+        source.messages.sort_unstable_by_key(|x| x.message_id);
+
+        let mut messages = source.messages.iter_mut().peekable();
         if let Ok(reader) = Reader::from_path(csv_path) {
-            patcher.patch(CSVStrategy::new(reader)).unwrap();
-        } else {
-            patcher.patch(NoStrategy).unwrap();
+            for entry in reader.into_byte_records() {
+                let entry = entry?;
+                if let Some(x) =
+                    messages.next_if(|x| atoi::atoi(&entry[2]).is_some_and(|i| x.message_id == i))
+                {
+                    x.text = entry[0].to_vec();
+                }
+            }
         }
+        let mut dest_file = File::create_new(&dest)?;
+        source.write(&mut dest_file)?;
     }
+
+    //eprintln!("translation: {}", translation_dir.into_path().display());
+    //return Ok(());
 
     crate::pack(translation_dir.path(), destination)?;
 

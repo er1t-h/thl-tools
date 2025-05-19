@@ -143,7 +143,6 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
                     byte_record.push_field(right.get(4).unwrap());
                 }
             }
-            eprintln!("{byte_record:?}");
             destination.write_byte_record(&byte_record)?;
             byte_record.clear();
         }

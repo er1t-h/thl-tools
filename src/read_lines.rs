@@ -175,34 +175,3 @@
 //        Some((next_char, message_id, next_dialogue))
 //    }
 //}
-
-use std::{
-    collections::VecDeque,
-    io::{self, Read},
-};
-
-use crate::mbe_file::{ImportantMessage, MBEFile, Message};
-
-pub struct DialogueReader {
-    messages: VecDeque<Message>,
-}
-
-impl DialogueReader {
-    pub fn from_reader(source: &mut dyn Read) -> io::Result<Self> {
-        Ok(Self {
-            messages: MBEFile::parse(source)?.messages.into_iter().collect(),
-        })
-    }
-}
-
-impl Iterator for DialogueReader {
-    type Item = ImportantMessage;
-    fn next(&mut self) -> Option<Self::Item> {
-        while let Some(message) = self.messages.pop_front() {
-            if let Some(important) = message.try_into_important() {
-                return Some(important);
-            }
-        }
-        None
-    }
-}

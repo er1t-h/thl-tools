@@ -12,7 +12,6 @@ pub use extract::extract;
 use num::FromPrimitive;
 use num_derive::FromPrimitive;
 pub use pack::pack;
-pub use read_lines::DialogueReader;
 
 #[repr(u32)]
 #[derive(FromPrimitive, Clone, Copy, Debug, PartialEq, Eq)]

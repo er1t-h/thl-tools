@@ -1,8 +1,11 @@
-use std::{fs::File, io};
+use std::{
+    fs::File,
+    io::{self, BufReader},
+};
 
 use csv::WriterBuilder;
 
-use crate::{DialogueReader, mbe_file::MBEFile};
+use crate::mbe_file::MBEFile;
 
 pub fn extract_as_csv(
     source: &mut File,
@@ -18,16 +21,26 @@ pub fn extract_as_csv(
         b"Is Important",
         file_language_name.unwrap_or(b"Original"),
     ])?;
-    let iter = MBEFile::parse(source)?.messages;
-    for message in iter {
-        let char_name = message.character.map_or("", |x| x.name());
-        wtr.write_record([
-            b"".as_slice(),
-            char_name.as_bytes(),
-            message.message_id.to_string().as_bytes(),
-            message.is_important().to_string().as_bytes(),
-            &message.text,
-        ])?;
+    let file = MBEFile::from_reader(&mut BufReader::new(source))?;
+    for message in file.into_messages() {
+        match message {
+            (message, None) => wtr.write_record([
+                b"".as_slice(),
+                b"",
+                message.message_id.to_string().as_bytes(),
+                b"false",
+                &message.text,
+            ])?,
+            (message, Some(char_and_call)) => {
+                wtr.write_record([
+                    b"".as_slice(),
+                    char_and_call.character.name().as_bytes(),
+                    message.message_id.to_string().as_bytes(),
+                    b"true",
+                    &message.text,
+                ])?;
+            }
+        };
     }
     Ok(())
 }

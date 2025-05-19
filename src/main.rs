@@ -78,17 +78,13 @@ fn main() -> Result<()> {
                 File::open(&source)
                     .with_context(|| format!("{} should be a valid file", source.display()))?,
             );
-            let file =
-                MBEFile::parse(&mut source).context("something went wrong while parsing file")?;
-            for message in file
-                .messages
-                .into_iter()
-                .flat_map(|x| x.try_into_important())
-            {
+            let file = MBEFile::from_reader(&mut source)
+                .context("something went wrong while parsing file")?;
+            for (message, char_and_call) in file.into_important_messages() {
                 println!(
                     "{}{} ({:5}): {}",
                     prefix,
-                    message.character.name(),
+                    char_and_call.character.name(),
                     message.message_id,
                     String::from_utf8_lossy(&message.text)
                 )
