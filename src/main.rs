@@ -81,12 +81,14 @@ fn main() -> Result<()> {
                 .context("something went wrong while fetching lines")?
                 .peekable();
             for (character, _, line) in iter {
-                println!(
-                    "{}{}: {}",
-                    prefix,
-                    character.as_str(),
-                    String::from_utf8_lossy(&line)
-                );
+                if let Some(character) = character {
+                    println!(
+                        "{}{}: {}",
+                        prefix,
+                        character.as_str(),
+                        String::from_utf8_lossy(&line)
+                    );
+                }
             }
         }
         Action::EditTranslate { source } => {
