@@ -12,19 +12,37 @@ seq:
   - id: sheets_headers
     repeat: expr
     repeat-expr: number_of_entries
-    type: sheet_header(_index == 0)
+    type: sheet_header
   - id: chunk
     type: chnk
 
+enums:
+  characters:
+    0x1: takumi
+    0x2: takemaru
+    0x3: hiruko
+    0x4: darumi
+    0x5: eito
+    0x6: tsubasa
+    0x7: gaku
+    0x8: ima
+    0x9: kako
+    0xA: shouma
+    0x12: sirei
+    0x63: takumi_combat
+    0x65: murvrum
+    0xCA: karua
+    0xC9: takumis_mom
+    0x12e: sirei_cutscene
+    0x130: announcement
+    0x131: thought
+    0x132: pa_system
+    0x134: lock
+    0x136: door
+
 types:
   sheet_header:
-    params:
-      - id: is_first_header
-        type: bool
     seq:
-      - id: pad
-        contents: [0,0,0,0]
-        if: is_first_header == false
       - id: length_of_entry_name
         type: u4
       - id: name
@@ -40,18 +58,22 @@ types:
         type: u4
       - id: number
         type: u4
+      - id: align
+        type: u4
+        if: (length_of_entry_name + num_of_entries * 4) % 8 != 0
       - id: data
         type: header_data
         size: length
         repeat: expr
         repeat-expr: number
-        
+
   header_data:
     seq:
-      - id: unk1
+      - id: message_id
         type: u4
-      - id: unk2
+      - id: character
         type: u4
+        enum: characters
  
   chnk:
     seq:
@@ -66,15 +88,10 @@ types:
   
   chnk_entry:
     seq:
-      - id: unknown
+      - id: entry_id
         type: u4
-        doc: |
-          Unknown value, seems like it's strictly increasing.
-          For a cutscene dialogue, setting it to 0 makes the text disappear.
-          I think it's related to dialogue apparition timing, but I can't be sure.
       - id: string_size
         type: u4
       - id: string
         type: strz
         size: string_size
-
