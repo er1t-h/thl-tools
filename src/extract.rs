@@ -5,13 +5,15 @@ use std::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use indicatif::{ProgressIterator, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressIterator};
 
-pub fn extract(reader: &mut dyn Read, destination: &Path) -> io::Result<()> {
-    let bar_style = ProgressStyle::default_bar()
-        .template("[{elapsed_precise}] {wide_bar} {pos:>7}/{len:7} {msg}")
-        .unwrap();
+use crate::indicatif_utils::{IndicatifProgressIterExt, default_bar_style_with_message_header};
 
+pub fn extract(
+    reader: &mut dyn Read,
+    destination: &Path,
+    multi_progress: Option<&MultiProgress>,
+) -> io::Result<()> {
     struct FileStruct {
         id: u32,
         name: String,
@@ -95,16 +97,20 @@ pub fn extract(reader: &mut dyn Read, destination: &Path) -> io::Result<()> {
     }
 
     let mut created_dirnames = HashSet::new();
+    let progress_bar = ProgressBar::new(file_infos.len() as u64)
+        .with_style(default_bar_style_with_message_header("extracting files"));
 
     for (i, entry) in file_infos
         .iter_mut()
         .enumerate()
-        .progress_with_style(bar_style)
-        .with_message("extracting files")
+        .progress_with(progress_bar.clone())
+        .in_optional_multi_progress(multi_progress)
     {
         let mut buffer = vec![0; entry.compressed_size as usize];
         let position = structures.iter().position(|x| x.id == i as u32).unwrap();
         let structure = structures.swap_remove(position);
+
+        progress_bar.set_message(structure.name.clone());
 
         if let Some((dirname, _)) = structure.name.rsplit_once('/') {
             let format = format!("{}/{}", destination.display(), dirname);

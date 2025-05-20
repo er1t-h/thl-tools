@@ -5,16 +5,15 @@ use std::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use num::FromPrimitive;
 
 use crate::{
-    Character,
+    PlaceholderOrCharacter,
     offset_wrapper::{OffsetReadWrapper, OffsetWriteWrapper},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CharAndCallId {
-    pub character: Character,
+    pub character: PlaceholderOrCharacter,
     pub call_id: u32,
 }
 
@@ -109,7 +108,7 @@ impl Sheet {
             let character = source.read_u32::<LittleEndian>()?;
             call_id_and_characters.push(CharAndCallId {
                 call_id: id,
-                character: Character::from_u32(character).unwrap(),
+                character: PlaceholderOrCharacter::from(character),
             });
             for _ in 0..length / 4 - 2 {
                 source.read_u32::<LittleEndian>()?;
@@ -155,7 +154,7 @@ impl Sheet {
 
         for &CharAndCallId { character, call_id } in &self.char_and_calls {
             destination.write_u32::<LittleEndian>(call_id)?;
-            destination.write_u32::<LittleEndian>(character as u32)?;
+            destination.write_u32::<LittleEndian>(character.into())?;
             for _ in 0..self.message_id_difference / 4 - 2 {
                 destination.write_u32::<LittleEndian>(0)?;
             }

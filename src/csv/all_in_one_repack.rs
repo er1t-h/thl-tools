@@ -18,7 +18,7 @@ pub fn all_in_one_repack<F: Read>(
     super::separate::separate_csv(full_text, csv_dir.path())?;
 
     let extracted_dir = TempDir::new()?;
-    crate::extract::extract(reference_mvgl, extracted_dir.path())?;
+    crate::extract::extract(reference_mvgl, extracted_dir.path(), None)?;
 
     let translation_dir = TempDir::new()?;
     for file in WalkDir::new(extracted_dir.path()) {

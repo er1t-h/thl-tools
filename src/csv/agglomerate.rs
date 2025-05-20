@@ -1,4 +1,7 @@
-use std::{fs::File, io, path::Path};
+use std::{
+    io::{self, Write},
+    path::Path,
+};
 
 use csv::ByteRecord;
 use walkdir::{DirEntry, WalkDir};
@@ -11,8 +14,8 @@ fn is_hidden(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-pub fn agglomerate_csv(source: &Path, destination: &Path) -> io::Result<()> {
-    let mut destination = csv::WriterBuilder::new().from_writer(File::create_new(destination)?);
+pub fn agglomerate_csv(source: &Path, destination: &mut dyn Write) -> io::Result<()> {
+    let mut destination = csv::WriterBuilder::new().from_writer(destination);
     let mut record = ByteRecord::new();
     for (i, file) in WalkDir::new(source)
         .follow_links(true)

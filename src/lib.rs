@@ -1,10 +1,10 @@
 pub mod csv;
 mod extract;
+mod indicatif_utils;
 pub mod mbe_file;
 mod offset_wrapper;
 mod pack;
 mod read_lines;
-pub mod translate;
 
 use std::borrow::Cow;
 
@@ -80,7 +80,7 @@ pub enum PlaceholderOrCharacter {
 }
 
 impl PlaceholderOrCharacter {
-    pub fn as_str(self) -> Cow<'static, str> {
+    pub fn name(self) -> Cow<'static, str> {
         match self {
             Self::Character(c) => Cow::Borrowed(c.name()),
             Self::Placeholder(p) => Cow::Owned(format!("Unknown character {p:#x}")),
@@ -93,6 +93,14 @@ impl From<u32> for PlaceholderOrCharacter {
         match Character::from_u32(value) {
             Some(x) => Self::Character(x),
             None => Self::Placeholder(value),
+        }
+    }
+}
+impl From<PlaceholderOrCharacter> for u32 {
+    fn from(value: PlaceholderOrCharacter) -> Self {
+        match value {
+            PlaceholderOrCharacter::Character(x) => x as u32,
+            PlaceholderOrCharacter::Placeholder(x) => x,
         }
     }
 }
