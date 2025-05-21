@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
-    fs::{self, File},
-    io::{BufWriter, Seek, SeekFrom, Write},
+    fs::{self},
+    io::SeekFrom,
     ops::Index,
     path::Path,
     time::Duration,
@@ -12,7 +12,10 @@ use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressIterator, Pr
 use lz4::block::CompressionMode;
 use walkdir::WalkDir;
 
-use crate::indicatif_utils::{IndicatifProgressExt, default_bar_style};
+use crate::{
+    helper_trait::WriteSeek,
+    indicatif_utils::{IndicatifProgressExt, default_bar_style},
+};
 
 #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord, Clone)]
 struct SlicedPath {
@@ -250,8 +253,7 @@ impl<'a> Packer<'a> {
         }
     }
 
-    pub fn pack(&self, source_dir: &Path, target_file: &mut File) -> std::io::Result<()> {
-        let mut file = BufWriter::new(target_file);
+    pub fn pack(&self, source_dir: &Path, target_file: &mut dyn WriteSeek) -> std::io::Result<()> {
         let bar_style = default_bar_style();
 
         let progress = ProgressBar::new_spinner()
@@ -287,21 +289,21 @@ impl<'a> Packer<'a> {
             .collect::<Vec<_>>();
         progress.finish_with_message("finished collecting all files!");
 
-        write!(file, "MDB1")?;
-        file.write_u32::<LittleEndian>(all_paths.len() as u32 + 1)?;
-        file.write_u32::<LittleEndian>(all_paths.len() as u32 + 1)?;
-        file.write_u32::<LittleEndian>(all_paths.len() as u32)?;
+        write!(target_file, "MDB1")?;
+        target_file.write_u32::<LittleEndian>(all_paths.len() as u32 + 1)?;
+        target_file.write_u32::<LittleEndian>(all_paths.len() as u32 + 1)?;
+        target_file.write_u32::<LittleEndian>(all_paths.len() as u32)?;
 
         let data_start_offset = all_paths.len() * (40 + 0x80) + 48 + 0x80;
         // This is the data start offset and the total file size, but we don't know that yet
-        file.write_u64::<LittleEndian>(data_start_offset as u64)?;
-        file.write_u64::<LittleEndian>(0)?;
+        target_file.write_u64::<LittleEndian>(data_start_offset as u64)?;
+        target_file.write_u64::<LittleEndian>(0)?;
 
         let tree = generate_tree(&all_paths);
 
-        file.write_u64::<LittleEndian>(u64::MAX)?;
-        file.write_u32::<LittleEndian>(0)?;
-        file.write_u32::<LittleEndian>(1)?;
+        target_file.write_u64::<LittleEndian>(u64::MAX)?;
+        target_file.write_u32::<LittleEndian>(0)?;
+        target_file.write_u32::<LittleEndian>(1)?;
 
         let def_slice = SlicedPath::default();
 
@@ -323,15 +325,15 @@ impl<'a> Packer<'a> {
         }
 
         for (entry, _) in &header_1s {
-            file.write_u32::<LittleEndian>(entry.compare_bit)?;
-            file.write_u32::<LittleEndian>(entry.id)?;
-            file.write_u32::<LittleEndian>(entry.left)?;
-            file.write_u32::<LittleEndian>(entry.right)?;
+            target_file.write_u32::<LittleEndian>(entry.compare_bit)?;
+            target_file.write_u32::<LittleEndian>(entry.id)?;
+            target_file.write_u32::<LittleEndian>(entry.left)?;
+            target_file.write_u32::<LittleEndian>(entry.right)?;
         }
 
         const EMPTY_BUFFER: [u8; 0x80] = [0; 0x80];
 
-        file.write_all(&EMPTY_BUFFER)?;
+        target_file.write_all(&EMPTY_BUFFER)?;
 
         for &(_, entry) in header_1s
             .iter()
@@ -347,15 +349,16 @@ impl<'a> Packer<'a> {
             } else {
                 &entry.extension
             };
-            file.write_all(extension)?;
-            file.write_all(entry.file.replace('/', "\\").as_bytes())?;
-            file.write_all(&EMPTY_BUFFER[..0x80 - entry.extension.len() - entry.file.len()])?;
+            target_file.write_all(extension)?;
+            target_file.write_all(entry.file.replace('/', "\\").as_bytes())?;
+            target_file
+                .write_all(&EMPTY_BUFFER[..0x80 - entry.extension.len() - entry.file.len()])?;
         }
 
         for _ in tree[1..].iter() {
-            file.write_u64::<LittleEndian>(0)?;
-            file.write_u64::<LittleEndian>(0)?;
-            file.write_u64::<LittleEndian>(0)?;
+            target_file.write_u64::<LittleEndian>(0)?;
+            target_file.write_u64::<LittleEndian>(0)?;
+            target_file.write_u64::<LittleEndian>(0)?;
         }
 
         struct FileEntry {
@@ -395,19 +398,19 @@ impl<'a> Packer<'a> {
                 compressed_size: compressed.len() as u64,
             });
             offset += compressed.len() as u64;
-            file.write_all(&compressed)?;
+            target_file.write_all(&compressed)?;
         }
 
-        file.seek(SeekFrom::Start(0x18))?;
-        file.write_u64::<LittleEndian>(data_start_offset as u64 + offset)?;
+        target_file.seek(SeekFrom::Start(0x18))?;
+        target_file.write_u64::<LittleEndian>(data_start_offset as u64 + offset)?;
 
-        file.seek(SeekFrom::Start(
+        target_file.seek(SeekFrom::Start(
             data_start_offset as u64 - all_paths.len() as u64 * 24,
         ))?;
         for entry in entries {
-            file.write_u64::<LittleEndian>(entry.offset)?;
-            file.write_u64::<LittleEndian>(entry.uncompressed_size)?;
-            file.write_u64::<LittleEndian>(entry.compressed_size)?;
+            target_file.write_u64::<LittleEndian>(entry.offset)?;
+            target_file.write_u64::<LittleEndian>(entry.uncompressed_size)?;
+            target_file.write_u64::<LittleEndian>(entry.compressed_size)?;
         }
 
         Ok(())

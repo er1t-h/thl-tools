@@ -1,10 +1,16 @@
-use std::{fs::File, io::BufReader};
+use std::{
+    fs::File,
+    io::{BufReader, BufWriter},
+};
 
 use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use cli::{Action, CliArgs};
-use csv::Reader;
-use thl_tools::{Extractor, Packer, mbe_file::MBEFile};
+use thl_tools::{
+    Extractor, Packer,
+    csv::{all_in_one_extraction::DialogueExtractor, all_in_one_repack::DialogueRepacker},
+    mbe_file::MBEFile,
+};
 
 mod cli;
 
@@ -16,16 +22,12 @@ fn main() -> Result<()> {
             source,
             destination,
             no_rename_images,
+            extract_only,
         } => {
             Extractor::new()
                 .with_rename_images(!no_rename_images)
-                .extract(
-                    &mut BufReader::new(
-                        File::open(&source)
-                            .with_context(|| format!("{} should exist", source.display()))?,
-                    ),
-                    &destination,
-                )
+                .with_name_matcher(extract_only)
+                .extract(&mut BufReader::new(File::open(&source)?), &destination)
                 .context("something went wrong during the extraction")?;
         }
         Action::Pack {
@@ -37,23 +39,20 @@ fn main() -> Result<()> {
             .with_rename_images(!no_rename_images)
             .pack(
                 &source,
-                &mut File::create(&destination)
-                    .with_context(|| format!("couldn't create {}", destination.display()))?,
+                &mut BufWriter::new(
+                    File::create(&destination)
+                        .with_context(|| format!("couldn't create {}", destination.display()))?,
+                ),
             )
             .context("something went wrong during the repacking")?,
         Action::ReadLines { source, prefix, .. } => {
-            let mut source = BufReader::new(
-                File::open(&source)
-                    .with_context(|| format!("{} should be a valid file", source.display()))?,
-            );
-            let file = MBEFile::from_reader(&mut source)
+            let file = MBEFile::from_reader(&mut BufReader::new(File::open(&source)?))
                 .context("something went wrong while parsing file")?;
             for (message, char_and_call) in file.into_important_messages() {
                 println!(
-                    "{}{} ({:5}): {}",
+                    "{}{}: {}",
                     prefix,
                     char_and_call.character.name(),
-                    message.message_id,
                     String::from_utf8_lossy(&message.text)
                 )
             }
@@ -64,26 +63,26 @@ fn main() -> Result<()> {
             destination,
             ..
         } => {
-            thl_tools::csv::all_in_one_extraction::all_in_one_extraction(
-                &game_path,
-                &languages,
-                &mut File::open(&destination)
-                    .with_context(|| format!("couldn't open {}:", destination.display()))?,
-            )
-            .context("error while extracting ressources to CSV")?;
+            DialogueExtractor::new()
+                .extract(
+                    &game_path,
+                    &languages,
+                    &mut BufWriter::new(File::open(&destination)?),
+                )
+                .context("error while extracting dialogues")?;
         }
         Action::RepackDialogues {
             full_text,
             reference_mvgl,
             destination,
             ..
-        } => thl_tools::csv::all_in_one_repack::all_in_one_repack(
-            Reader::from_path(full_text)?,
-            &mut File::open(reference_mvgl)?,
-            &mut File::create(destination)?,
-        )?,
-        #[allow(unreachable_patterns)]
-        _ => todo!(),
+        } => DialogueRepacker::new()
+            .repack(
+                &mut BufReader::new(File::open(&full_text)?),
+                &mut BufReader::new(File::open(&reference_mvgl)?),
+                &mut BufWriter::new(File::create(&destination)?),
+            )
+            .context("error while repacking dialogues")?,
     }
     Ok(())
 }

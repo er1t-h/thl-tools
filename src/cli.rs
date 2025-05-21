@@ -1,6 +1,7 @@
 use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::{Ok, Result, bail};
+use regex::Regex;
 use thl_tools::csv::all_in_one_extraction::Language;
 
 fn get_default_csv_path() -> PathBuf {
@@ -20,6 +21,9 @@ pub enum Action {
         /// If true, will not rename `.img` files into `.dds` files.
         #[arg(long)]
         no_rename_images: bool,
+        /// Regex that will determine which files to extract.
+        #[arg(long)]
+        extract_only: Option<Regex>,
     },
     /// Packs a folder into a `.mvgl` archive.
     Pack {
@@ -85,6 +89,7 @@ impl CliArgs {
                 source,
                 destination,
                 no_rename_images: _,
+                extract_only: _,
             } => {
                 if !source.is_file() {
                     bail!("{} should be a valid file", source.display());

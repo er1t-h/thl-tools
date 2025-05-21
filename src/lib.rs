@@ -1,5 +1,6 @@
 pub mod csv;
 mod extract;
+mod helper_trait;
 mod indicatif_utils;
 pub mod mbe_file;
 mod offset_wrapper;

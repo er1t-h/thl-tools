@@ -1,16 +1,17 @@
-use std::{
-    collections::HashSet,
-    io::{self, Read},
-    path::Path,
-};
+use std::{collections::HashSet, io, path::Path};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use indicatif::{MultiProgress, ProgressBar, ProgressIterator};
+use regex::Regex;
 
-use crate::indicatif_utils::{IndicatifProgressExt, byte_bar_style_with_message_header};
+use crate::{
+    helper_trait::ReadSeek,
+    indicatif_utils::{IndicatifProgressExt, byte_bar_style_with_message_header},
+};
 
 pub struct Extractor<'a> {
     multi_progress: Option<&'a MultiProgress>,
+    name_matcher: Option<Regex>,
     rename_images: bool,
 }
 
@@ -24,6 +25,7 @@ impl<'a> Extractor<'a> {
     pub const fn new() -> Self {
         Self {
             multi_progress: None,
+            name_matcher: None,
             rename_images: false,
         }
     }
@@ -42,7 +44,14 @@ impl<'a> Extractor<'a> {
         }
     }
 
-    pub fn extract(&self, reader: &mut dyn Read, destination: &Path) -> io::Result<()> {
+    pub fn with_name_matcher(self, name_matcher: Option<Regex>) -> Self {
+        Self {
+            name_matcher,
+            ..self
+        }
+    }
+
+    pub fn extract(&self, reader: &mut dyn ReadSeek, destination: &Path) -> io::Result<()> {
         struct FileStruct {
             id: u32,
             name: String,
@@ -53,7 +62,7 @@ impl<'a> Extractor<'a> {
             offset: u64,
             uncompressed_size: u64,
             compressed_size: u64,
-            content: Vec<u8>,
+            associated_struct: FileStruct,
         }
 
         std::fs::create_dir_all(destination)?;
@@ -114,32 +123,49 @@ impl<'a> Extractor<'a> {
         let mut file_infos = Vec::new();
         let mut total_compressed_size = 0;
 
-        for _ in 0..data_entry_count {
+        for i in 0..data_entry_count {
             let offset = reader.read_u64::<LittleEndian>()?;
             let uncompressed_size = reader.read_u64::<LittleEndian>()?;
             let compressed_size = reader.read_u64::<LittleEndian>()?;
-            total_compressed_size += compressed_size;
-            file_infos.push(FileInfo {
-                offset,
-                uncompressed_size,
-                compressed_size,
-                content: vec![],
-            });
+
+            let position = structures.iter().position(|x| x.id == i).unwrap();
+            let structure = structures.swap_remove(position);
+            let should_skip = if let Some(name_matcher) = &self.name_matcher {
+                !name_matcher.is_match(&structure.name)
+            } else {
+                false
+            };
+
+            if !should_skip {
+                total_compressed_size += compressed_size;
+            }
+            file_infos.push((
+                FileInfo {
+                    offset,
+                    uncompressed_size,
+                    compressed_size,
+                    associated_struct: structure,
+                },
+                should_skip,
+            ));
         }
 
         let mut created_dirnames = HashSet::new();
         let progress_bar = ProgressBar::new(total_compressed_size)
             .with_style(byte_bar_style_with_message_header("extracting files"));
 
-        for (i, entry) in file_infos
-            .iter_mut()
+        for (_, (entry, should_skip)) in file_infos
+            .into_iter()
             .enumerate()
             .progress_with(progress_bar.clone())
             .in_optional_multi_progress(self.multi_progress)
         {
+            if should_skip {
+                reader.seek_relative(entry.compressed_size as i64)?;
+                continue;
+            }
             let mut buffer = vec![0; entry.compressed_size as usize];
-            let position = structures.iter().position(|x| x.id == i as u32).unwrap();
-            let structure = structures.swap_remove(position);
+            let structure = &entry.associated_struct;
             progress_bar.set_message(structure.name.clone());
 
             if let Some((dirname, _)) = structure.name.rsplit_once('/') {
