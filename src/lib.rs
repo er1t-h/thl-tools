@@ -8,10 +8,10 @@ mod read_lines;
 
 use std::borrow::Cow;
 
-pub use extract::extract;
+pub use extract::Extractor;
 use num::FromPrimitive;
 use num_derive::FromPrimitive;
-pub use pack::pack;
+pub use pack::Packer;
 
 #[repr(u32)]
 #[derive(FromPrimitive, Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,12 +27,24 @@ pub enum Character {
     Ima = 0x8,
     Kako = 0x9,
     Shouma = 0xA,
+    Nozomi = 0xB,
+    Kurara = 0xC,
+    Kyoshika = 0xD,
+    Yugamu = 0xE,
+    Moko = 0xF,
+    Eva = 0x10,
+    Shion = 0x11,
     Sirei = 0x12,
+    Nigou = 0x13,
     TakumiCombatForm = 0x63,
     Murvrum = 0x65,
+    MorphingCommander = 0x6B,
+    VallaGarzo = 0x6C,
+    Vexhness = 0x71,
     Karua = 0xCA,
     KaruaChildForm = 0xCB,
     TakumisMom = 0xC9,
+    Kamyuhn = 0xD2,
     SireiCutscene = 0x12E,
     Announcement = 0x130,
     Thought = 0x131,
@@ -56,12 +68,24 @@ impl Character {
             Self::Ima => "Ima",
             Self::Kako => "Kako",
             Self::Shouma => "Shouma",
+            Self::Nozomi => "Nozomi",
+            Self::Kurara => "Kurara",
+            Self::Kyoshika => "Kyoshika",
+            Self::Yugamu => "Yugamu",
+            Self::Moko => "Moko",
+            Self::Eva => "Eva",
+            Self::Shion => "Shion",
             Self::Sirei => "Sirei",
+            Self::Nigou => "Nigou",
             Self::TakumiCombatForm => "Takumi (Combat Form)",
             Self::Murvrum => "Murvrum",
+            Self::MorphingCommander => "Morphing Commander",
+            Self::VallaGarzo => "Valla-Garzo",
+            Self::Vexhness => "V'exhness",
             Self::Karua => "Karua",
             Self::KaruaChildForm => "Karua (Child)",
             Self::TakumisMom => "Takumi's Mom",
+            Self::Kamyuhn => "Kamyuhn",
             Self::SireiCutscene => "Sirei (Cutscene)",
             Self::Announcement => "Announcement",
             Self::Thought => "Thought",

@@ -20,20 +20,6 @@ To repack the content of a folder to a `.mvgl` archive:
 cargo p path/to/the/directory path/to/the/created/archive
 ```
 
-### Translation
-
-To translate the lines of a file, saving the translation in another:
-
-```sh
-cargo tl path/to/the/file.mbe path/to/the/translated/file
-```
-
-To translate a file, overwriting it:
-
-```sh
-cargo etl path/to/the/file.mbe
-```
-
 ### Reading lines
 
 To read every dialogue lines of a `.mbe` file:
@@ -43,6 +29,26 @@ cargo rl path/to/the/file.mbe [-p PREFIX]
 
 The default prefix is "> ".
 
+### Extracting all dialogues into a single CSV
+
+```
+cargo xd path/to/the/game/directory comma,separated,languages,to,use
+```
+
+Available languages being 'japanese', 'english', 'traditional-chinese' and 'simplified-chinese'
+
+### Repacking all dialogues into the game
+
+```
+cargo rd path/to/the/csv path/to/the/mvgl/file/to/patch path/to/the/destination
+```
+
+This will patch a mvgl file, putting your own text in its place. The mvgl files are located in `gamedata/app_text[LANGUAGE].dx11.mvgl`, where LANGUAGE is 00 for Japanese, 01 for English, 02 for Traditional Chinese, and 03 for Simplified Chinese.
+
 ## How the files are composed.
 
-In the `resources/` folder, I put the `.ksy` files describing the file format of `.mvgl` files and `.mbe` files. For `.mbe` files, there's a lot I didn't really understood yet, but it's enough to replace texts in-game.
+In the `resources/` folder, I put the `.ksy` files describing the file format of `.mvgl` files and `.mbe` files.
+
+## As for images
+
+Most of images are situated in the `gamedata/app_0.dx11.mvgl`. Some of these images are overwrote in the corresponding `gamedata/app_*.dx11.mvgl` for each languages.

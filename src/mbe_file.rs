@@ -126,14 +126,6 @@ impl Sheet {
     pub fn write(&self, destination: &mut OffsetWriteWrapper) -> io::Result<()> {
         let pad_bytes = 4 - self.name.len() % 4;
         let entry_name_length = self.name.len() + pad_bytes;
-        if self.name == b"sugoroku_event_name" {
-            eprintln!(
-                "{} + {} = 0x{:x}",
-                self.name.len(),
-                pad_bytes,
-                entry_name_length
-            )
-        }
         destination.write_u32::<LittleEndian>(entry_name_length as u32)?;
         destination.write_all(&self.name)?;
         for _ in 0..pad_bytes {

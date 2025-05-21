@@ -4,7 +4,7 @@ use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use cli::{Action, CliArgs};
 use csv::Reader;
-use thl_tools::{extract, mbe_file::MBEFile, pack};
+use thl_tools::{Extractor, Packer, mbe_file::MBEFile};
 
 mod cli;
 
@@ -15,26 +15,32 @@ fn main() -> Result<()> {
         Action::Extract {
             source,
             destination,
+            no_rename_images,
         } => {
-            extract(
-                &mut BufReader::new(
-                    File::open(&source)
-                        .with_context(|| format!("{} should exist", source.display()))?,
-                ),
-                &destination,
-                None,
-            )
-            .context("something went wrong during the extraction")?;
+            Extractor::new()
+                .with_rename_images(!no_rename_images)
+                .extract(
+                    &mut BufReader::new(
+                        File::open(&source)
+                            .with_context(|| format!("{} should exist", source.display()))?,
+                    ),
+                    &destination,
+                )
+                .context("something went wrong during the extraction")?;
         }
         Action::Pack {
             source,
             destination,
-        } => pack(
-            &source,
-            &mut File::create_new(&destination)
-                .with_context(|| format!("{} shouldn't exist", destination.display()))?,
-        )
-        .context("something went wrong during the repacking")?,
+            no_rename_images,
+            ..
+        } => Packer::new()
+            .with_rename_images(!no_rename_images)
+            .pack(
+                &source,
+                &mut File::create(&destination)
+                    .with_context(|| format!("couldn't create {}", destination.display()))?,
+            )
+            .context("something went wrong during the repacking")?,
         Action::ReadLines { source, prefix, .. } => {
             let mut source = BufReader::new(
                 File::open(&source)
@@ -56,16 +62,13 @@ fn main() -> Result<()> {
             game_path,
             languages,
             destination,
-            overwrite,
+            ..
         } => {
-            let mut file = File::options()
-                .write(true)
-                .truncate(true)
-                .create_new(!overwrite)
-                .open(&destination)
-                .with_context(|| format!("couldn't open {}:", destination.display()))?;
             thl_tools::csv::all_in_one_extraction::all_in_one_extraction(
-                &game_path, &languages, &mut file,
+                &game_path,
+                &languages,
+                &mut File::open(&destination)
+                    .with_context(|| format!("couldn't open {}:", destination.display()))?,
             )
             .context("error while extracting ressources to CSV")?;
         }
@@ -73,6 +76,7 @@ fn main() -> Result<()> {
             full_text,
             reference_mvgl,
             destination,
+            ..
         } => thl_tools::csv::all_in_one_repack::all_in_one_repack(
             Reader::from_path(full_text)?,
             &mut File::open(reference_mvgl)?,

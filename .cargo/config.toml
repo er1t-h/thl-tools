@@ -1,12 +1,6 @@
 [alias]
 r = "run --release --quiet --"
 
-translate = "r translate"
-tl = "translate"
-
-edit-translate = "r edit-translate"
-etl = "edit-translate"
-
 extract = "r extract"
 x = "extract"
 
@@ -16,5 +10,8 @@ p = "pack"
 read-lines = "r read-lines"
 rl = "read-lines"
 
-extract-as-csv = "r extract-as-csv"
-xc = "extract-as-csv"
+extract-dialogues = "r extract-dialogues"
+xd = "extract-dialogues"
+
+repack-dialogues = "r repack-dialogues"
+rd = "repack-dialogues"

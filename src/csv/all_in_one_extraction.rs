@@ -10,9 +10,12 @@ use indicatif::{MultiProgress, ProgressBar, ProgressIterator};
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
-use crate::indicatif_utils::{
-    IndicatifProgressIterExt, default_bar_style_with_message_header, default_spinner_style,
-    default_spinner_style_with_message_header,
+use crate::{
+    Extractor,
+    indicatif_utils::{
+        IndicatifProgressExt, default_bar_style_with_message_header, default_spinner_style,
+        default_spinner_style_with_message_header,
+    },
 };
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -65,13 +68,14 @@ pub fn all_in_one_extraction(
         .in_multi_progress(&multi_progress)
     {
         progress_bar.set_message(language.as_column_name());
-        crate::extract(
-            &mut BufReader::new(File::open(
-                game_path.join(format!("gamedata/{}", language.text_file_name())),
-            )?),
-            extracted_language_dir.path(),
-            Some(&multi_progress),
-        )?;
+        Extractor::new()
+            .with_multi_progress(Some(&multi_progress))
+            .extract(
+                &mut BufReader::new(File::open(
+                    game_path.join(format!("gamedata/{}", language.text_file_name())),
+                )?),
+                extracted_language_dir.path(),
+            )?;
 
         let spinner = ProgressBar::new_spinner().with_style(
             default_spinner_style_with_message_header("creating individual CSV for"),

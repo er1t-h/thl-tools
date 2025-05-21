@@ -3,11 +3,12 @@ use std::{
     io::{self, Read},
 };
 
+use atoi::atoi;
 use csv::Reader;
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
-use crate::mbe_file::MBEFile;
+use crate::{Packer, extract::Extractor, mbe_file::MBEFile};
 
 pub fn all_in_one_repack<F: Read>(
     full_text: Reader<F>,
@@ -18,7 +19,7 @@ pub fn all_in_one_repack<F: Read>(
     super::separate::separate_csv(full_text, csv_dir.path())?;
 
     let extracted_dir = TempDir::new()?;
-    crate::extract::extract(reference_mvgl, extracted_dir.path(), None)?;
+    Extractor::new().extract(reference_mvgl, extracted_dir.path())?;
 
     let translation_dir = TempDir::new()?;
     for file in WalkDir::new(extracted_dir.path()) {
@@ -38,14 +39,16 @@ pub fn all_in_one_repack<F: Read>(
         let mut source = MBEFile::from_path(&file.path())?;
         source.messages.sort_unstable_by_key(|x| x.message_id);
 
-        let mut messages = source.messages.iter_mut().peekable();
         if let Ok(reader) = Reader::from_path(csv_path) {
             for entry in reader.into_byte_records() {
                 let entry = entry?;
-                if let Some(x) =
-                    messages.next_if(|x| atoi::atoi(&entry[2]).is_some_and(|i| x.message_id == i))
+                if let Ok(message) = source
+                    .messages
+                    .binary_search_by_key(&atoi(&entry[2]).unwrap(), |x| x.message_id)
                 {
-                    x.text = entry[0].to_vec();
+                    if !entry[0].is_empty() {
+                        source.messages[message].text = entry[0].to_vec();
+                    }
                 }
             }
         }
@@ -53,10 +56,7 @@ pub fn all_in_one_repack<F: Read>(
         source.write(&mut dest_file)?;
     }
 
-    //eprintln!("translation: {}", translation_dir.into_path().display());
-    //return Ok(());
-
-    crate::pack(translation_dir.path(), destination)?;
+    Packer::new().pack(translation_dir.path(), destination)?;
 
     Ok(())
 }

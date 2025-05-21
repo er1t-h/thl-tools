@@ -17,6 +17,9 @@ pub enum Action {
         source: PathBuf,
         /// The path to the folder to create.
         destination: PathBuf,
+        /// If true, will not rename `.img` files into `.dds` files.
+        #[arg(long)]
+        no_rename_images: bool,
     },
     /// Packs a folder into a `.mvgl` archive.
     Pack {
@@ -24,6 +27,12 @@ pub enum Action {
         source: PathBuf,
         /// The path to the `.mvgl` archive to create.
         destination: PathBuf,
+        /// If true, will overwrite the `destination` file if it exists.
+        #[arg(long)]
+        overwrite: bool,
+        /// If true, will not rename `.dds` files into `.img` files.
+        #[arg(long)]
+        no_rename_images: bool,
     },
     /// Read every lines of a `.mbe` file.
     ReadLines {
@@ -32,11 +41,6 @@ pub enum Action {
         /// The prefix appended at the beginning of each line.
         #[arg(short, long, default_value_t = Cow::Borrowed("> "))]
         prefix: Cow<'static, str>,
-        /// If set to true, will not print twice the same line.
-        ///
-        /// Particularly useful as some English files seems to have the same line repeated twice.
-        #[arg(long, default_value_t = true)]
-        ignore_duplicate: bool,
     },
     /// Extract all dialogues from the game, putting them all into a single `.csv`
     ExtractDialogues {
@@ -52,7 +56,7 @@ pub enum Action {
         /// The path to the destination.
         #[arg(long, default_value=get_default_csv_path().into_os_string())]
         destination: PathBuf,
-        /// The path to the destination.
+        /// If true, will overwrite the `destination` file if it exists.
         #[arg(long)]
         overwrite: bool,
     },
@@ -68,6 +72,9 @@ pub enum Action {
         reference_mvgl: PathBuf,
         /// The path to the repacked text
         destination: PathBuf,
+        /// If true, will overwrite the `destination` file if it exists.
+        #[arg(long)]
+        overwrite: bool,
     },
 }
 
@@ -77,6 +84,7 @@ impl CliArgs {
             Action::Extract {
                 source,
                 destination,
+                no_rename_images: _,
             } => {
                 if !source.is_file() {
                     bail!("{} should be a valid file", source.display());
@@ -88,11 +96,13 @@ impl CliArgs {
             Action::Pack {
                 source,
                 destination,
+                overwrite,
+                no_rename_images: _,
             } => {
                 if !source.is_dir() {
                     bail!("{} should be a valid directory", source.display())
                 }
-                if destination.exists() {
+                if !*overwrite && destination.exists() {
                     bail!("{} should not exist", destination.display())
                 }
             }
@@ -121,6 +131,7 @@ impl CliArgs {
                 full_text,
                 reference_mvgl,
                 destination,
+                overwrite,
             } => {
                 if !full_text.exists() {
                     bail!("{} should exist", full_text.display());
@@ -128,7 +139,7 @@ impl CliArgs {
                 if !reference_mvgl.exists() {
                     bail!("{} should exist", reference_mvgl.display());
                 }
-                if destination.exists() {
+                if !*overwrite && destination.exists() {
                     bail!("{} shouldn't exist", destination.display());
                 }
             }
