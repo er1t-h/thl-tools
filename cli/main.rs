@@ -7,7 +7,7 @@ use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use cli::{Action, CliArgs};
 use thl_tools::{
-    csv::{all_in_one_repack::DialogueRepacker, extract_dialogues::DialogueExtractor},
+    csv::{extract_dialogues::DialogueExtractor, repack_dialogues::DialogueRepacker},
     mbe::MBEFile,
     mvgl::Extractor,
     mvgl::Packer,
