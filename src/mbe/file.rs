@@ -8,7 +8,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
     PlaceholderOrCharacter,
-    offset_wrapper::{OffsetReadWrapper, OffsetWriteWrapper},
+    helpers::offset_wrapper::{OffsetReadWrapper, OffsetWriteWrapper},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

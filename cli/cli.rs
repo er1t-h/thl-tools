@@ -2,7 +2,7 @@ use std::{borrow::Cow, path::PathBuf};
 
 use anyhow::{Ok, Result, bail};
 use regex::Regex;
-use thl_tools::csv::all_in_one_extraction::Language;
+use thl_tools::csv::extract_dialogues::Language;
 
 fn get_default_csv_path() -> PathBuf {
     let mut path = std::env::current_dir().unwrap();

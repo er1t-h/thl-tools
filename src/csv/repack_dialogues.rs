@@ -10,10 +10,10 @@ use tempfile::TempDir;
 use walkdir::WalkDir;
 
 use crate::{
-    Packer,
-    extract::Extractor,
-    helper_trait::{ReadSeek, WriteSeek},
-    mbe_file::MBEFile,
+    helpers::traits::{ReadSeek, WriteSeek},
+    mbe::MBEFile,
+    mvgl::Extractor,
+    mvgl::Packer,
 };
 
 ///

@@ -7,16 +7,17 @@ use std::{
 };
 
 use clap::builder::OsStr;
+use csv::Writer;
 use indicatif::{MultiProgress, ProgressBar, ProgressIterator};
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
 use crate::{
-    Extractor,
-    indicatif_utils::{
+    helpers::indicatif::{
         IndicatifProgressExt, default_bar_style_with_message_header, default_spinner_style,
         default_spinner_style_with_message_header,
     },
+    mvgl::Extractor,
 };
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -130,12 +131,12 @@ impl<'a> DialogueExtractor<'a> {
                 let p = extracted_language_dir
                     .path()
                     .join(file.path().with_extension("csv"));
-                let destination = File::create_new(p)?;
+                let mut destination = File::create_new(p)?;
 
                 let p = extracted_language_dir.path().join(file.path());
                 crate::csv::extract::extract_as_csv(
-                    &mut File::open(p)?,
-                    &destination,
+                    &mut BufReader::new(File::open(p)?),
+                    &mut Writer::from_writer(&mut destination),
                     Some(b"Translated".as_slice()),
                     Some(language.name().as_bytes()),
                 )?;

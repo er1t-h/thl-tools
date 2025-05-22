@@ -12,9 +12,9 @@ use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressIterator, Pr
 use lz4::block::CompressionMode;
 use walkdir::WalkDir;
 
-use crate::{
-    helper_trait::WriteSeek,
-    indicatif_utils::{IndicatifProgressExt, default_bar_style},
+use crate::helpers::{
+    indicatif::{IndicatifProgressExt, default_bar_style},
+    traits::WriteSeek,
 };
 
 #[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord, Clone)]
