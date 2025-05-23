@@ -8,26 +8,35 @@ use byteorder::{LittleEndian, ReadBytesExt};
 
 use crate::{helpers::traits::ReadSeek, mvgl::FileEntry};
 
-use super::FileInfo;
+use super::{FileHeader, FileInfo};
 
 pub struct ContentIterator<'a> {
+    #[allow(dead_code)]
+    header: FileHeader,
     file_infos: VecDeque<FileInfo>,
     reader: &'a mut dyn ReadSeek,
     should_decompress: bool,
 }
 
 impl<'a> ContentIterator<'a> {
-    fn parse_header(reader: &mut dyn ReadSeek) -> io::Result<VecDeque<FileInfo>> {
+    #[allow(dead_code)]
+    pub(crate) fn into_inner(self) -> (FileHeader, VecDeque<FileInfo>, &'a mut dyn ReadSeek) {
+        (self.header, self.file_infos, self.reader)
+    }
+
+    fn parse_header(reader: &mut dyn ReadSeek) -> io::Result<(FileHeader, VecDeque<FileInfo>)> {
         let mut magic_number = [0; 4];
 
         reader.read_exact(&mut magic_number)?;
         assert_eq!(&magic_number, b"MDB1");
 
-        let _file_entry_count = reader.read_u32::<LittleEndian>()?;
-        let _file_name_count = reader.read_u32::<LittleEndian>()?;
-        let data_entry_count = reader.read_u32::<LittleEndian>()?;
-        let _data_start = reader.read_u64::<LittleEndian>()?;
-        let _total_size = reader.read_u64::<LittleEndian>()?;
+        let header = FileHeader {
+            file_entry_count: reader.read_u32::<LittleEndian>()?,
+            file_name_count: reader.read_u32::<LittleEndian>()?,
+            data_entry_count: reader.read_u32::<LittleEndian>()?,
+            data_start: reader.read_u64::<LittleEndian>()?,
+            total_size: reader.read_u64::<LittleEndian>()?,
+        };
 
         let mut sep1 = [0; 16];
         reader.read_exact(&mut sep1)?;
@@ -39,9 +48,9 @@ impl<'a> ContentIterator<'a> {
             .as_slice()
         );
 
-        let mut structures = Vec::with_capacity(data_entry_count as usize);
+        let mut structures = Vec::with_capacity(header.data_entry_count as usize);
 
-        for _ in 0..data_entry_count {
+        for _ in 0..header.data_entry_count {
             let _compare_byte = reader.read_u32::<LittleEndian>()?;
             let id = reader.read_u32::<LittleEndian>()?;
             let _left = reader.read_u32::<LittleEndian>()?;
@@ -72,9 +81,9 @@ impl<'a> ContentIterator<'a> {
             entry.name = file;
         }
 
-        let mut file_infos = VecDeque::with_capacity(data_entry_count as usize);
+        let mut file_infos = VecDeque::with_capacity(header.data_entry_count as usize);
 
-        for i in 0..data_entry_count {
+        for i in 0..header.data_entry_count {
             let offset = reader.read_u64::<LittleEndian>()?;
             let uncompressed_size = reader.read_u64::<LittleEndian>()?;
             let compressed_size = reader.read_u64::<LittleEndian>()?;
@@ -89,12 +98,14 @@ impl<'a> ContentIterator<'a> {
             });
         }
 
-        Ok(file_infos)
+        Ok((header, file_infos))
     }
 
     pub fn new(reader: &'a mut dyn ReadSeek) -> io::Result<Self> {
+        let (header, file_infos) = Self::parse_header(reader)?;
         Ok(Self {
-            file_infos: Self::parse_header(reader)?,
+            header,
+            file_infos,
             reader,
             should_decompress: true,
         })

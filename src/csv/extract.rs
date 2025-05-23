@@ -14,7 +14,7 @@ pub fn extract_as_csv(
         translated_name.unwrap_or(b"Translated"),
         b"Character Name",
         b"Entry ID",
-        b"Is Important",
+        b"Call ID",
         file_language_name.unwrap_or(b"Original"),
     ])?;
     let file = MBEFile::from_reader(source)?;
@@ -24,7 +24,7 @@ pub fn extract_as_csv(
                 b"".as_slice(),
                 b"",
                 message.message_id.to_string().as_bytes(),
-                b"false",
+                b"",
                 &message.text,
             ])?,
             (message, Some(char_and_call)) => {
@@ -32,7 +32,7 @@ pub fn extract_as_csv(
                     b"".as_slice(),
                     char_and_call.character.name().as_bytes(),
                     message.message_id.to_string().as_bytes(),
-                    b"true",
+                    char_and_call.call_id.to_string().as_bytes(),
                     &message.text,
                 ])?;
             }

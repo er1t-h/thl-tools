@@ -24,10 +24,12 @@ fn main() -> Result<()> {
             destination,
             no_rename_images,
             extract_only,
+            overwrite,
         } => {
             Extractor::new()
                 .with_rename_images(!no_rename_images)
                 .with_name_matcher(extract_only)
+                .with_overwrite(overwrite)
                 .extract(&mut BufReader::new(File::open(&source)?), &destination)
                 .context("something went wrong during the extraction")?;
         }
@@ -68,7 +70,7 @@ fn main() -> Result<()> {
                 .extract(
                     &game_path,
                     &languages,
-                    &mut BufWriter::new(File::open(&destination)?),
+                    &mut BufWriter::new(File::create(&destination)?),
                 )
                 .context("error while extracting dialogues")?;
         }

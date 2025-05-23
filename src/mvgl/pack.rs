@@ -1,43 +1,18 @@
-use std::{
-    borrow::Cow,
-    fs::{self},
-    io::SeekFrom,
-    ops::Index,
-    path::Path,
-    time::Duration,
-};
+use std::{borrow::Cow, fs, io::SeekFrom, path::Path, time::Duration};
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressIterator, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressIterator};
 use lz4::block::CompressionMode;
 use walkdir::WalkDir;
 
 use crate::helpers::{
-    indicatif::{IndicatifProgressExt, default_bar_style},
+    indicatif::{
+        IndicatifProgressExt, default_bar_style_with_message_header, default_spinner_style,
+    },
     traits::WriteSeek,
 };
 
-#[derive(Debug, PartialEq, Eq, Default, PartialOrd, Ord, Clone)]
-struct SlicedPath {
-    extension: [u8; 4],
-    file: String,
-}
-impl Index<u16> for SlicedPath {
-    type Output = u8;
-    fn index(&self, index: u16) -> &Self::Output {
-        self.extension
-            .iter()
-            .chain(self.file.as_bytes().iter())
-            .chain(std::iter::once(&0))
-            .nth(index as usize)
-            .unwrap()
-    }
-}
-
-const EMPTY_SLICED_PATH: &SlicedPath = &SlicedPath {
-    file: String::new(),
-    extension: [b' '; 4],
-};
+use super::{EMPTY_SLICED_PATH, SlicedPath};
 
 #[derive(Debug)]
 struct TreeNode<'a> {
@@ -131,19 +106,7 @@ fn generate_tree(all_paths: &'_ [SlicedPath]) -> Vec<TreeNode<'_>> {
         is_left: false,
     }]);
 
-    let progress = ProgressBar::new_spinner().with_style(
-        ProgressStyle::default_spinner()
-            .template("[{elapsed_precise}] {spinner} {msg}")
-            .unwrap(),
-    );
-    progress.enable_steady_tick(Duration::from_millis(500));
-
-    let mut i = 0;
     while let Some(entry) = queue.pop() {
-        let intro = format!("building tree, iteration {i}:");
-        progress.set_message(format!("{intro} separating nodeless and with_nodes"));
-        i += 1;
-
         let mut nodeless = vec![];
         let mut with_node = vec![];
 
@@ -167,8 +130,6 @@ fn generate_tree(all_paths: &'_ [SlicedPath]) -> Vec<TreeNode<'_>> {
             continue;
         }
 
-        progress.set_message(format!("{intro} finding child"));
-
         let child = find_first_bit_mismatch(entry.val.wrapping_add(1), &nodeless, &with_node);
 
         let len = nodes.len() as u16;
@@ -181,8 +142,6 @@ fn generate_tree(all_paths: &'_ [SlicedPath]) -> Vec<TreeNode<'_>> {
 
         let mut left = Vec::new();
         let mut right = Vec::new();
-
-        progress.set_message(format!("{intro} differentiating left and right childs"));
 
         for file in entry.list {
             if (file[child.compare_bit >> 3] >> (child.compare_bit & 7)) & 1 != 0 {
@@ -215,7 +174,6 @@ fn generate_tree(all_paths: &'_ [SlicedPath]) -> Vec<TreeNode<'_>> {
         }
         nodes.push(child);
     }
-    progress.finish();
 
     nodes
 }
@@ -254,40 +212,19 @@ impl<'a> Packer<'a> {
     }
 
     pub fn pack(&self, source_dir: &Path, target_file: &mut dyn WriteSeek) -> std::io::Result<()> {
-        let bar_style = default_bar_style();
-
-        let progress = ProgressBar::new_spinner()
+        let collecting_files_progress = ProgressBar::new_spinner()
             .with_elapsed(Duration::from_secs(0))
             .with_message("collecting all files...")
-            .with_style(
-                ProgressStyle::default_spinner()
-                    .template("[{elapsed_precise}] {spinner} {msg}")
-                    .unwrap(),
-            )
+            .with_style(default_spinner_style())
             .in_optional_multi_progress(self.multi_progress);
-        progress.enable_steady_tick(Duration::from_millis(300));
+        collecting_files_progress.enable_steady_tick(Duration::from_millis(200));
 
         let all_paths = WalkDir::new(source_dir)
             .into_iter()
             .filter_map(Result::ok)
             .filter(|x| x.file_type().is_file())
-            .map(|entry| {
-                let path = entry.path().strip_prefix(source_dir).unwrap();
-                let extension = path.extension().unwrap().to_str().unwrap();
-                let path = path.with_extension("").to_str().unwrap().to_string();
-                SlicedPath {
-                    file: path,
-                    extension: std::array::from_fn(|i| {
-                        if let Some(&x) = extension.as_bytes().get(i) {
-                            x
-                        } else {
-                            b' '
-                        }
-                    }),
-                }
-            })
+            .map(|entry| SlicedPath::new(entry.path().strip_prefix(source_dir).unwrap()).unwrap())
             .collect::<Vec<_>>();
-        progress.finish_with_message("finished collecting all files!");
 
         write!(target_file, "MDB1")?;
         target_file.write_u32::<LittleEndian>(all_paths.len() as u32 + 1)?;
@@ -335,15 +272,7 @@ impl<'a> Packer<'a> {
 
         target_file.write_all(&EMPTY_BUFFER)?;
 
-        for &(_, entry) in header_1s
-            .iter()
-            .progress()
-            .with_style(bar_style.clone())
-            .with_message("writing file names")
-            .with_finish(ProgressFinish::WithMessage(Cow::Borrowed(
-                "finished writing all names",
-            )))
-        {
+        for &(_, entry) in &header_1s {
             let extension = if self.rename_images && &entry.extension == b"dds " {
                 b"img "
             } else {
@@ -372,20 +301,21 @@ impl<'a> Packer<'a> {
 
         header_1s.sort_unstable_by_key(|(x, _)| x.id);
 
+        collecting_files_progress.finish_with_message("finished collecting all files!");
+
+        let compression_progress = ProgressBar::new(header_1s.len() as u64)
+            .with_style(default_bar_style_with_message_header("compressing file"))
+            .with_finish(ProgressFinish::WithMessage(Cow::Borrowed(
+                "finished compressing all files",
+            )))
+            .in_optional_multi_progress(self.multi_progress);
+
         for (_, entry) in header_1s
             .into_iter()
-            .progress_with_style(bar_style)
-            .with_message("compressing and writing files to archive")
-            .with_finish(ProgressFinish::AndLeave)
+            .progress_with(compression_progress.clone())
         {
-            let ext = entry
-                .extension
-                .into_iter()
-                .map(|x| x as char)
-                .take_while(|&x| x != ' ')
-                .collect::<String>();
-            let file_content =
-                fs::read(format!("{}/{}.{}", source_dir.display(), entry.file, ext))?;
+            compression_progress.set_message(Cow::Owned(entry.to_string()));
+            let file_content = fs::read(format!("{}/{}", source_dir.display(), entry))?;
             let compressed = lz4::block::compress(
                 &file_content,
                 //None,

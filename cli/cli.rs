@@ -24,6 +24,9 @@ pub enum Action {
         /// Regex that will determine which files to extract.
         #[arg(long)]
         extract_only: Option<Regex>,
+        /// If true, will replace files with matching name in the destination folder
+        #[arg(long)]
+        overwrite: bool,
     },
     /// Packs a folder into a `.mvgl` archive.
     Pack {
@@ -90,6 +93,7 @@ impl CliArgs {
                 destination,
                 no_rename_images: _,
                 extract_only: _,
+                overwrite: _,
             } => {
                 if !source.is_file() {
                     bail!("{} should be a valid file", source.display());

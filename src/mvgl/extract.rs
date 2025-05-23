@@ -1,4 +1,4 @@
-use std::{collections::HashSet, io, path::Path};
+use std::{borrow::Cow, collections::HashSet, io, path::Path};
 
 use bitvec::{order::Lsb0, vec::BitVec};
 use indicatif::{MultiProgress, ProgressBar, ProgressIterator};
@@ -15,6 +15,7 @@ pub struct Extractor<'a> {
     multi_progress: Option<&'a MultiProgress>,
     name_matcher: Option<Regex>,
     rename_images: bool,
+    overwrite: bool,
 }
 
 impl Default for Extractor<'_> {
@@ -24,11 +25,19 @@ impl Default for Extractor<'_> {
 }
 
 impl<'a> Extractor<'a> {
+    fn handle_path_renaming<'p>(&self, path: &'p Path) -> Cow<'p, Path> {
+        match path.extension().and_then(|x| x.to_str()) {
+            Some("img") if self.rename_images => Cow::Owned(path.with_extension("dds")),
+            _ => Cow::Borrowed(path),
+        }
+    }
+
     pub const fn new() -> Self {
         Self {
             multi_progress: None,
             name_matcher: None,
             rename_images: false,
+            overwrite: false,
         }
     }
 
@@ -37,6 +46,10 @@ impl<'a> Extractor<'a> {
             rename_images,
             ..self
         }
+    }
+
+    pub fn with_overwrite(self, overwrite: bool) -> Self {
+        Self { overwrite, ..self }
     }
 
     pub fn with_multi_progress(self, multi_progress: Option<&'a MultiProgress>) -> Self {
@@ -61,11 +74,16 @@ impl<'a> Extractor<'a> {
             BitVec::<u8, Lsb0>::with_capacity(content_iterator.file_infos().len());
 
         for file in content_iterator.file_infos() {
-            let should_skip = if let Some(name_matcher) = &self.name_matcher {
+            let mut should_skip = if let Some(name_matcher) = &self.name_matcher {
                 !name_matcher.is_match(&file.associated_struct.name)
             } else {
                 false
             };
+
+            if !self.overwrite {
+                let path = self.handle_path_renaming(Path::new(&file.associated_struct.name));
+                should_skip = should_skip || (!self.overwrite && destination.join(&path).exists());
+            }
 
             entry_skip_status.push(should_skip);
             if !should_skip {
@@ -94,28 +112,20 @@ impl<'a> Extractor<'a> {
                     .clone(),
             );
             let (info, content) = content_iterator.nth(nth).unwrap()?;
+            let path = Path::new(&info.associated_struct.name);
             nth = 0;
 
-            if let Some((dirname, _)) = info.associated_struct.name.rsplit_once('/') {
-                let format = format!("{}/{}", destination.display(), dirname);
-                if !created_dirnames.contains(&format) {
-                    std::fs::create_dir_all(&format)?;
-                    created_dirnames.insert(format);
+            if let Some(dirname) = path.parent() {
+                if created_dirnames.insert(dirname.to_path_buf()) {
+                    std::fs::create_dir_all(destination.join(dirname))?;
                 }
             }
 
-            let file_name = if self.rename_images {
-                if let Some(x) = info.associated_struct.name.strip_suffix(".img") {
-                    format!("{}/{x}.dds", destination.display())
-                } else {
-                    format!("{}/{}", destination.display(), info.associated_struct.name)
-                }
-            } else {
-                format!("{}/{}", destination.display(), info.associated_struct.name)
-            };
+            let path = self.handle_path_renaming(Path::new(&info.associated_struct.name));
+            let file_name = format!("{}/{}", destination.display(), path.display());
 
-            progress_bar.inc(info.compressed_size);
             std::fs::write(file_name, &content)?;
+            progress_bar.inc(info.compressed_size);
         }
 
         Ok(())
