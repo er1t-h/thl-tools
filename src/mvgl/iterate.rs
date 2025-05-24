@@ -23,7 +23,7 @@ impl<'a, R: ReadSeek> Iterator for ContentIterator<'a, R> {
         self.index += 1;
         Some(CompressedFileHandle {
             info,
-            reader: &self.archive.reader,
+            reader: self.archive.reader.clone(),
             data_start: self.archive.header.data_start,
         })
     }

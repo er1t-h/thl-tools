@@ -25,9 +25,11 @@ fn main() -> Result<()> {
             no_rename_images,
             extract_only,
             overwrite,
+            no_multi_threading,
         } => {
             Extractor::new()
                 .with_rename_images(!no_rename_images)
+                .with_multi_threading(!no_multi_threading)
                 .with_name_matcher(extract_only)
                 .with_overwrite(overwrite)
                 .extract(&mut BufReader::new(File::open(&source)?), &destination)

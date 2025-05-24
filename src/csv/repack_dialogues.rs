@@ -10,10 +10,9 @@ use tempfile::TempDir;
 use walkdir::WalkDir;
 
 use crate::{
-    helpers::traits::{ReadSeek, WriteSeek},
+    helpers::traits::{ReadSeekSendSync, WriteSeek},
     mbe::MBEFile,
-    mvgl::Extractor,
-    mvgl::Packer,
+    mvgl::{Extractor, Packer},
 };
 
 ///
@@ -50,7 +49,7 @@ impl<'a> DialogueRepacker<'a> {
     pub fn repack(
         &self,
         full_text: &mut dyn Read,
-        reference_mvgl: &mut dyn ReadSeek,
+        reference_mvgl: &mut dyn ReadSeekSendSync,
         destination: &mut dyn WriteSeek,
     ) -> io::Result<()> {
         let csv_dir = TempDir::new()?;

@@ -3,12 +3,12 @@ mod iterate;
 mod pack;
 
 use std::{
-    cell::RefCell,
     fmt::Display,
     fs::File,
     io::{self, BufReader, Read, SeekFrom},
     ops::Index,
     path::Path,
+    sync::{Arc, Mutex},
 };
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -22,7 +22,7 @@ use crate::helpers::traits::ReadSeek;
 pub struct MVGLArchive<R: ReadSeek> {
     header: FileHeader,
     infos: Vec<FileInfo>,
-    reader: RefCell<R>,
+    reader: Arc<Mutex<R>>,
 }
 
 impl<R: ReadSeek> MVGLArchive<R> {
@@ -117,14 +117,14 @@ impl<R: ReadSeek> MVGLArchive<R> {
         Ok(Self {
             header,
             infos: file_infos,
-            reader: RefCell::new(reader),
+            reader: Arc::new(Mutex::new(reader)),
         })
     }
 
     pub fn get(&self, path: &str) -> Option<io::Result<CompressedFile>> {
         self.infos.iter().find_map(|info| {
             if info.name == path {
-                let mut reader = self.reader.borrow_mut();
+                let mut reader = self.reader.lock().unwrap();
                 if let Err(e) = reader.seek(SeekFrom::Start(self.header.data_start + info.offset)) {
                     return Some(Err(e));
                 };
@@ -152,9 +152,10 @@ impl MVGLArchive<BufReader<File>> {
 
 pub struct CompressedFileHandle<'a, R: ReadSeek> {
     info: &'a FileInfo,
-    reader: &'a RefCell<R>,
+    reader: Arc<Mutex<R>>,
     data_start: u64,
 }
+
 pub struct CompressedFile {
     content: Vec<u8>,
     decompressed_size: usize,
@@ -165,7 +166,7 @@ pub struct DecompressedFile {
 
 impl<R: ReadSeek> CompressedFileHandle<'_, R> {
     pub fn read(self) -> io::Result<CompressedFile> {
-        let mut reader = self.reader.borrow_mut();
+        let mut reader = self.reader.lock().unwrap();
         reader.seek(SeekFrom::Start(self.data_start + self.info.offset))?;
 
         CompressedFile::from_reader(

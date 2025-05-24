@@ -27,6 +27,9 @@ pub enum Action {
         /// If true, will replace files with matching name in the destination folder
         #[arg(long)]
         overwrite: bool,
+        /// If true, files will be extracted with a single thread
+        #[arg(long)]
+        no_multi_threading: bool,
     },
     /// Packs a folder into a `.mvgl` archive.
     Pack {
@@ -94,6 +97,7 @@ impl CliArgs {
                 no_rename_images: _,
                 extract_only: _,
                 overwrite: _,
+                no_multi_threading: _,
             } => {
                 if !source.is_file() {
                     bail!("{} should be a valid file", source.display());
