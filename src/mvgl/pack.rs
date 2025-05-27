@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fs, io::SeekFrom, path::Path, time::Duration};
+use std::{borrow::Cow, ffi::OsStr, fs, io::SeekFrom, path::Path, time::Duration};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressIterator};
@@ -223,7 +223,15 @@ impl<'a> Packer<'a> {
             .into_iter()
             .filter_map(Result::ok)
             .filter(|x| x.file_type().is_file())
-            .map(|entry| SlicedPath::new(entry.path().strip_prefix(source_dir).unwrap()).unwrap())
+            .map(|entry| {
+                let path =
+                    if self.rename_images && entry.path().extension() == Some(OsStr::new("dds")) {
+                        Cow::Owned(entry.path().with_extension("img"))
+                    } else {
+                        Cow::Borrowed(entry.path())
+                    };
+                SlicedPath::new(path.strip_prefix(source_dir).unwrap()).unwrap()
+            })
             .collect::<Vec<_>>();
 
         write!(target_file, "MDB1")?;
@@ -273,12 +281,7 @@ impl<'a> Packer<'a> {
         target_file.write_all(&EMPTY_BUFFER)?;
 
         for &(_, entry) in &header_1s {
-            let extension = if self.rename_images && &entry.extension == b"dds " {
-                b"img "
-            } else {
-                &entry.extension
-            };
-            target_file.write_all(extension)?;
+            target_file.write_all(&entry.extension)?;
             target_file.write_all(entry.file.replace('/', "\\").as_bytes())?;
             target_file
                 .write_all(&EMPTY_BUFFER[..0x80 - entry.extension.len() - entry.file.len()])?;
@@ -315,7 +318,11 @@ impl<'a> Packer<'a> {
             .progress_with(compression_progress.clone())
         {
             compression_progress.set_message(Cow::Owned(entry.to_string()));
-            let file_content = fs::read(format!("{}/{}", source_dir.display(), entry))?;
+            let file_content = if self.rename_images && entry.extension == *b"img " {
+                fs::read(format!("{}/{}.dds", source_dir.display(), entry.file))?
+            } else {
+                fs::read(format!("{}/{}", source_dir.display(), entry))?
+            };
             let compressed = lz4::block::compress(
                 &file_content,
                 //None,
