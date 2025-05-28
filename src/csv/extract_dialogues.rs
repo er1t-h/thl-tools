@@ -8,7 +8,7 @@ use std::{
 
 use clap::builder::OsStr;
 use csv::Writer;
-use indicatif::{MultiProgress, ProgressBar, ProgressIterator};
+use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressIterator};
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
@@ -93,13 +93,16 @@ impl<'a> DialogueExtractor<'a> {
             .zip(&languages_dir)
             .progress_with(progress_bar.clone())
             .in_multi_progress(&multi_progress)
+            .with_finish(ProgressFinish::WithMessage(
+                "finished extracting all files".into(),
+            ))
         {
             progress_bar.set_message(language.name());
             Extractor::new()
                 .with_multi_progress(Some(&multi_progress))
                 .extract(
                     &mut BufReader::new(File::open(
-                        game_path.join(format!("gamedata/{}", language.text_file_name())),
+                        game_path.join("gamedata").join(language.text_file_name()),
                     )?),
                     extracted_language_dir.path(),
                 )?;

@@ -117,11 +117,8 @@ impl<'a> Extractor<'a> {
                 let path = Path::new(&handle.info.name);
 
                 if let Some(dirname) = path.parent() {
-                    if created_dirnames
-                        .lock()
-                        .unwrap()
-                        .insert(dirname.to_path_buf())
-                    {
+                    let mut lock = created_dirnames.lock().unwrap();
+                    if lock.insert(dirname.to_path_buf()) {
                         std::fs::create_dir_all(destination.join(dirname))?;
                     }
                 }

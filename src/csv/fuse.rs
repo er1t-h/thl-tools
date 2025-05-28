@@ -50,6 +50,7 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
 
     let mut byte_record_1 = ByteRecord::new();
     let mut byte_record_2 = ByteRecord::new();
+    let mut usual_header = None;
 
     for path in first_files_path.intersection(&second_files_path) {
         byte_record_1.clear();
@@ -70,6 +71,9 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
             let mut first_header = source_1.byte_headers().unwrap().clone();
             let second_header = source_2.byte_headers().unwrap();
             first_header.push_field(&second_header[4]);
+            if usual_header.is_none() {
+                usual_header = Some(first_header.clone());
+            }
             first_header
         };
 
@@ -143,6 +147,58 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
                     byte_record.push_field(right.get(4).unwrap());
                 }
             }
+            destination.write_byte_record(&byte_record)?;
+            byte_record.clear();
+        }
+    }
+
+    let usual_header = usual_header.unwrap();
+    let mut byte_record = byte_record_1;
+    for path in first_files_path.difference(&second_files_path) {
+        byte_record.clear();
+        let mut source = first_source.to_path_buf();
+        let mut dest = destination.to_path_buf();
+
+        source.push(path);
+        dest.push(path);
+
+        let mut source = csv::Reader::from_path(source)?;
+
+        let mut destination = csv::Writer::from_path(dest)?;
+        destination.write_byte_record(&usual_header)?;
+        let mut byte_record = ByteRecord::new();
+
+        while source.read_byte_record(&mut byte_record).is_ok_and(|x| x) {
+            byte_record.push_field(b"");
+            destination.write_byte_record(&byte_record)?;
+            byte_record.clear();
+        }
+    }
+
+    let mut tmp_record = byte_record_2;
+    for path in second_files_path.difference(&first_files_path) {
+        byte_record.clear();
+        tmp_record.clear();
+        let mut source = first_source.to_path_buf();
+        let mut dest = destination.to_path_buf();
+
+        source.push(path);
+        dest.push(path);
+
+        let mut source = csv::Reader::from_path(source)?;
+
+        let mut destination = csv::Writer::from_path(dest)?;
+        destination.write_byte_record(&usual_header)?;
+
+        while source.read_byte_record(&mut tmp_record).is_ok_and(|x| x) {
+            // Take the informations like message ID, call ID, Character...
+            byte_record.extend(tmp_record.iter().take(4));
+            // Add space for every other column the other file had
+            for _ in 4..usual_header.len() - 1 {
+                byte_record.push_field(b"");
+            }
+            // Add the text as the rightest entry
+            byte_record.push_field(&tmp_record[4]);
             destination.write_byte_record(&byte_record)?;
             byte_record.clear();
         }
