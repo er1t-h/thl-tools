@@ -45,7 +45,7 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
     {
         let mut dest = destination.to_path_buf();
         dest.push(dir);
-        fs::create_dir_all(dest)?;
+        fs::create_dir_all(&dest)?;
     }
 
     let mut byte_record_1 = ByteRecord::new();
@@ -55,13 +55,9 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
     for path in first_files_path.intersection(&second_files_path) {
         byte_record_1.clear();
         byte_record_2.clear();
-        let mut first_source = first_source.to_path_buf();
-        let mut second_source = second_source.to_path_buf();
-        let mut dest = destination.to_path_buf();
-
-        first_source.push(path);
-        second_source.push(path);
-        dest.push(path);
+        let first_source = first_source.join(path);
+        let second_source = second_source.join(path);
+        let dest = destination.join(path);
 
         let mut source_2 = csv::Reader::from_path(second_source)?;
         let mut source_1 = csv::Reader::from_path(first_source)?;
@@ -156,11 +152,8 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
     let mut byte_record = byte_record_1;
     for path in first_files_path.difference(&second_files_path) {
         byte_record.clear();
-        let mut source = first_source.to_path_buf();
-        let mut dest = destination.to_path_buf();
-
-        source.push(path);
-        dest.push(path);
+        let source = first_source.join(path);
+        let dest = destination.join(path);
 
         let mut source = csv::Reader::from_path(source)?;
 
@@ -179,11 +172,8 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
     for path in second_files_path.difference(&first_files_path) {
         byte_record.clear();
         tmp_record.clear();
-        let mut source = first_source.to_path_buf();
-        let mut dest = destination.to_path_buf();
-
-        source.push(path);
-        dest.push(path);
+        let source = second_source.join(path);
+        let dest = destination.join(path);
 
         let mut source = csv::Reader::from_path(source)?;
 
