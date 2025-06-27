@@ -1,6 +1,7 @@
 use std::{
     fs::{self, File},
     io::{self, Read},
+    time::Duration,
 };
 
 use atoi::atoi;
@@ -61,6 +62,8 @@ impl<'a> DialogueRepacker<'a> {
             .extract(reference_mvgl, extracted_dir.path())?;
 
         let translation_dir = TempDir::new()?;
+        // eprintln!("{}", csv_dir.path().display());
+        // std::thread::sleep(Duration::from_secs(60));
         for file in WalkDir::new(extracted_dir.path()) {
             let file = file?;
             let file_relative_path = file.path().strip_prefix(extracted_dir.path()).unwrap();
@@ -78,11 +81,11 @@ impl<'a> DialogueRepacker<'a> {
             let mut source = MBEFile::from_path(&file.path())?;
             source.messages.sort_unstable_by_key(|x| x.message_id);
 
-            if let Ok(reader) = Reader::from_path(csv_path) {
+            if let Ok(reader) = Reader::from_path(&csv_path) {
                 for (i, entry) in reader.into_byte_records().enumerate() {
                     let entry = entry?;
                     if let Ok(message) = source.messages.binary_search_by_key(
-                        &atoi(&entry[2]).unwrap_or_else(|| {
+                        &atoi(&entry[3]).unwrap_or_else(|| {
                             panic!("Row {}, column 3 should be a valid message ID", i)
                         }),
                         |x| x.message_id,

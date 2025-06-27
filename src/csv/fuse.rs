@@ -80,7 +80,7 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
         for (left, right) in fuse(
             source_1.byte_records().flatten(),
             source_2.byte_records().flatten(),
-            vec![2],
+            vec![3],
         )
         .sorted_by_key(|x| {
             String::from_utf8_lossy(

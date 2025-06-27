@@ -194,6 +194,34 @@ impl MBEFile {
         Self::parse_inner(&mut OffsetReadWrapper::new(&mut file))
     }
 
+    pub fn new(sheet_names: Vec<Vec<u8>>) -> Self {
+        Self {
+            sheets: sheet_names
+                .into_iter()
+                .map(|x| Sheet {
+                    char_and_calls: vec![],
+                    name: x,
+                    unknown_entries: vec![2, 2, 7, 8, 7, 7, 7, 7, 7, 7, 7, 7],
+                    message_id_difference: 0x38,
+                })
+                .collect(),
+            messages: vec![],
+        }
+    }
+
+    pub fn add_message(&mut self, message: Vec<u8>, character_and_id: CharAndCallId) {
+        let message_id = if let Some(message) = self.messages.last() {
+            message.message_id + self.sheets[0].message_id_difference
+        } else {
+            self.sheets[0].message_id_difference
+        };
+        self.messages.push(Message {
+            message_id,
+            text: message,
+        });
+        self.sheets[0].char_and_calls.push(character_and_id);
+    }
+
     pub fn into_important_messages(self) -> impl Iterator<Item = (Message, CharAndCallId)> {
         self.into_messages().flat_map(|(message, char_and_call)| {
             char_and_call.map(|char_and_call| (message, char_and_call))

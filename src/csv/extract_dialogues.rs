@@ -1,12 +1,12 @@
 use std::{
     borrow::Cow,
+    ffi::OsStr,
     fs::{self, File},
     io::{self, BufReader, Write},
     path::Path,
     time::Duration,
 };
 
-use clap::builder::OsStr;
 use csv::Writer;
 use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressIterator};
 use tempfile::TempDir;
@@ -19,34 +19,6 @@ use crate::{
     },
     mvgl::Extractor,
 };
-
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
-pub enum Language {
-    English,
-    Japanese,
-    SimplifiedChinese,
-    TraditionalChinese,
-}
-
-impl Language {
-    fn name(self) -> &'static str {
-        match self {
-            Self::English => "English",
-            Self::Japanese => "Japanese",
-            Self::TraditionalChinese => "Traditional Chinese",
-            Self::SimplifiedChinese => "Simplified Chinese",
-        }
-    }
-
-    fn text_file_name(self) -> &'static str {
-        match self {
-            Self::Japanese => "app_text00.dx11.mvgl",
-            Self::English => "app_text01.dx11.mvgl",
-            Self::TraditionalChinese => "app_text02.dx11.mvgl",
-            Self::SimplifiedChinese => "app_text03.dx11.mvgl",
-        }
-    }
-}
 
 pub struct DialogueExtractor<'a> {
     multi_progress: Option<&'a MultiProgress>,
@@ -71,8 +43,7 @@ impl<'a> DialogueExtractor<'a> {
 
     pub fn extract(
         &self,
-        game_path: &Path,
-        languages: &[Language],
+        languages: &[(impl AsRef<Path>, impl AsRef<str>)],
         destination: &mut dyn Write,
     ) -> io::Result<()> {
         let extraction_dir = TempDir::new()?;
@@ -88,7 +59,7 @@ impl<'a> DialogueExtractor<'a> {
         let progress_bar = ProgressBar::new(languages.len() as u64)
             .with_style(default_bar_style_with_message_header("working on language"));
 
-        for (&language, extracted_language_dir) in languages
+        for ((lang_path, lang_name), extracted_language_dir) in languages
             .iter()
             .zip(&languages_dir)
             .progress_with(progress_bar.clone())
@@ -97,13 +68,11 @@ impl<'a> DialogueExtractor<'a> {
                 "finished extracting all files".into(),
             ))
         {
-            progress_bar.set_message(language.name());
+            progress_bar.set_message(lang_name.as_ref().to_string());
             Extractor::new()
                 .with_multi_progress(Some(&multi_progress))
                 .extract(
-                    &mut BufReader::new(File::open(
-                        game_path.join("gamedata").join(language.text_file_name()),
-                    )?),
+                    &mut BufReader::new(File::open(lang_path)?),
                     extracted_language_dir.path(),
                 )?;
 
@@ -119,7 +88,7 @@ impl<'a> DialogueExtractor<'a> {
                     fs::create_dir_all(extraction_dir.path().join(file.path()))?;
                     continue;
                 }
-                if file.path().extension() != Some(&OsStr::from("mbe")) {
+                if file.path().extension() != Some(OsStr::new("mbe")) {
                     continue;
                 }
 
@@ -141,7 +110,7 @@ impl<'a> DialogueExtractor<'a> {
                     &mut BufReader::new(File::open(p)?),
                     &mut Writer::from_writer(&mut destination),
                     Some(b"Translated".as_slice()),
-                    Some(language.name().as_bytes()),
+                    Some(lang_name.as_ref().as_bytes()),
                 )?;
             }
         }

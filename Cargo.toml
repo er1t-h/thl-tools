@@ -3,17 +3,12 @@ name = "thl-tools"
 version = "0.1.0"
 edition = "2024"
 
-[[bin]]
-name = "thl-tools-cli"
-path = "cli/main.rs"
-
 [dependencies]
-anyhow = "1.0.98"
 atoi = "2.0.0"
 bitvec = "1.0.1"
 byteorder = "1.5.0"
-clap = { version = "4.5.37", features = ["derive", "string"] }
 csv = "1.3.1"
+diesel = { version = "2.2.10", optional = true }
 indicatif = "0.17.11"
 itertools = "0.14.0"
 lz4 = "1.28.1"
@@ -22,7 +17,9 @@ num-derive = "0.4.2"
 num-traits = "0.2.19"
 rayon = "1.10.0"
 regex = "1.11.1"
-rustyline = "15.0.0"
 serde = { version = "1.0.219", features = ["derive"] }
 tempfile = "3.19.1"
 walkdir = "2.5.0"
+
+[features]
+diesel = ["dep:diesel"]
