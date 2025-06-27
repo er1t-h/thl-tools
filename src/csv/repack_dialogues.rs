@@ -78,26 +78,26 @@ impl<'a> DialogueRepacker<'a> {
                 .with_extension("csv");
             let dest = translation_dir.path().join(file_relative_path);
 
-            let mut source = MBEFile::from_path(&file.path())?;
-            source.messages.sort_unstable_by_key(|x| x.message_id);
-
-            if let Ok(reader) = Reader::from_path(&csv_path) {
-                for (i, entry) in reader.into_byte_records().enumerate() {
-                    let entry = entry?;
-                    if let Ok(message) = source.messages.binary_search_by_key(
-                        &atoi(&entry[3]).unwrap_or_else(|| {
-                            panic!("Row {}, column 3 should be a valid message ID", i)
-                        }),
-                        |x| x.message_id,
-                    ) {
-                        if !entry[0].is_empty() {
-                            source.messages[message].text = entry[0].to_vec();
-                        }
-                    }
-                }
-            }
-            let mut dest_file = File::create_new(&dest)?;
-            source.write(&mut dest_file)?;
+            //let mut source = MBEFile::from_path(&file.path())?;
+            //source.messages.sort_unstable_by_key(|x| x.message_id);
+            //
+            //if let Ok(reader) = Reader::from_path(&csv_path) {
+            //    for (i, entry) in reader.into_byte_records().enumerate() {
+            //        let entry = entry?;
+            //        if let Ok(message) = source.messages.binary_search_by_key(
+            //            &atoi(&entry[3]).unwrap_or_else(|| {
+            //                panic!("Row {}, column 3 should be a valid message ID", i)
+            //            }),
+            //            |x| x.message_id,
+            //        ) {
+            //            if !entry[0].is_empty() {
+            //                source.messages[message].text = entry[0].to_vec();
+            //            }
+            //        }
+            //    }
+            //}
+            //let mut dest_file = File::create_new(&dest)?;
+            //source.write(&mut dest_file)?;
         }
 
         Packer::new()

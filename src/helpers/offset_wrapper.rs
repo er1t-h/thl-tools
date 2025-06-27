@@ -9,8 +9,17 @@ impl<'a> OffsetReadWrapper<'a> {
     pub fn new(source: &'a mut dyn Read) -> Self {
         Self { offset: 0, source }
     }
+
     pub fn offset(&self) -> usize {
         self.offset
+    }
+
+    pub fn align(&mut self, alignment: u64) -> std::io::Result<()> {
+        let alignment = self.offset() as u64 % alignment;
+        if alignment > 0 {
+            std::io::copy(&mut self.take(alignment), &mut std::io::sink())?;
+        }
+        Ok(())
     }
 }
 

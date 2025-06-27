@@ -2,7 +2,7 @@ use std::io::{self, Read, Write};
 
 use csv::Writer;
 
-use crate::mbe::MBEFile;
+use crate::{helpers::offset_wrapper::OffsetReadWrapper, mbe::MBEFile};
 
 pub fn extract_as_csv(
     source: &mut dyn Read,
@@ -17,26 +17,26 @@ pub fn extract_as_csv(
         b"Call ID",
         file_language_name.unwrap_or(b"Original"),
     ])?;
-    let file = MBEFile::from_reader(source)?;
-    for message in file.into_messages() {
-        match message {
-            (message, None) => destination.write_record([
-                b"".as_slice(),
-                b"",
-                message.message_id.to_string().as_bytes(),
-                b"",
-                &message.text,
-            ])?,
-            (message, Some(char_and_call)) => {
-                destination.write_record([
-                    b"".as_slice(),
-                    char_and_call.character.name().as_bytes(),
-                    message.message_id.to_string().as_bytes(),
-                    char_and_call.call_id.to_string().as_bytes(),
-                    &message.text,
-                ])?;
-            }
-        };
-    }
+    let file = MBEFile::parse(&mut OffsetReadWrapper::new(source)).unwrap();
+    //for message in file.into_messages() {
+    //    match message {
+    //        (message, None) => destination.write_record([
+    //            b"".as_slice(),
+    //            b"",
+    //            message.message_id.to_string().as_bytes(),
+    //            b"",
+    //            &message.text,
+    //        ])?,
+    //        (message, Some(char_and_call)) => {
+    //            destination.write_record([
+    //                b"".as_slice(),
+    //                char_and_call.character.name().as_bytes(),
+    //                message.message_id.to_string().as_bytes(),
+    //                char_and_call.call_id.to_string().as_bytes(),
+    //                &message.text,
+    //            ])?;
+    //        }
+    //    };
+    //}
     Ok(())
 }
