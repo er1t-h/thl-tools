@@ -14,12 +14,13 @@ impl<'a> OffsetReadWrapper<'a> {
         self.offset
     }
 
-    pub fn align(&mut self, alignment: u64) -> std::io::Result<()> {
+    pub fn align(&mut self, alignment: u64) -> std::io::Result<u64> {
         let alignment = self.offset() as u64 % alignment;
         if alignment > 0 {
-            std::io::copy(&mut self.take(alignment), &mut std::io::sink())?;
+            std::io::copy(&mut self.take(alignment), &mut std::io::sink())
+        } else {
+            Ok(0)
         }
-        Ok(())
     }
 }
 
@@ -43,6 +44,15 @@ impl<'a> OffsetWriteWrapper<'a> {
 
     pub fn offset(&self) -> usize {
         self.offset
+    }
+
+    pub fn align(&mut self, alignment: u64, byte: u8) -> io::Result<u64> {
+        let alignment = self.offset() as u64 % alignment;
+        if alignment > 0 {
+            std::io::copy(&mut std::io::repeat(byte).take(alignment), self.source)
+        } else {
+            Ok(0)
+        }
     }
 }
 

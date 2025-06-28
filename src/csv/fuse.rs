@@ -61,12 +61,12 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
 
         let mut source_2 = csv::Reader::from_path(second_source)?;
         let mut source_1 = csv::Reader::from_path(first_source)?;
-        let number_of_language_in_src_1 = source_1.byte_headers().unwrap().len() - 4;
+        let number_of_language_in_src_1 = source_1.byte_headers().unwrap().len() - 2;
 
         let header = {
             let mut first_header = source_1.byte_headers().unwrap().clone();
             let second_header = source_2.byte_headers().unwrap();
-            first_header.push_field(&second_header[4]);
+            first_header.push_field(&second_header[2]);
             if usual_header.is_none() {
                 usual_header = Some(first_header.clone());
             }
@@ -80,67 +80,53 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
         for (left, right) in fuse(
             source_1.byte_records().flatten(),
             source_2.byte_records().flatten(),
-            vec![3],
-        )
-        .sorted_by_key(|x| {
-            String::from_utf8_lossy(
-                x.0.as_ref()
-                    .unwrap_or_else(|| x.1.as_ref().unwrap())
-                    .get(2)
-                    .unwrap(),
-            )
-            .parse::<u32>()
-            .unwrap()
-        }) {
+            vec![0],
+        ) {
             match (left, right) {
                 (None, None) => continue,
                 (None, Some(right)) => {
-                    // Translated
-                    byte_record.push_field(b"");
+                    // Message ID
+                    byte_record.push_field(right.get(0).unwrap());
                     // Character
                     byte_record.push_field(right.get(1).unwrap());
-                    // Message ID
-                    byte_record.push_field(right.get(2).unwrap());
-                    // Is Important
-                    byte_record.push_field(right.get(3).unwrap());
+
+                    // Translated
+                    byte_record.push_field(b"");
+
                     // Left Text
                     for _ in 0..number_of_language_in_src_1 {
                         byte_record.push_field(b"");
                     }
                     // Right Text
-                    byte_record.push_field(right.get(4).unwrap());
+                    byte_record.push_field(right.get(3).unwrap());
                 }
                 (Some(left), None) => {
-                    // Translated
-                    byte_record.push_field(b"");
+                    // Message ID
+                    byte_record.push_field(left.get(0).unwrap());
                     // Character
                     byte_record.push_field(left.get(1).unwrap());
-                    // Message ID
-                    byte_record.push_field(left.get(2).unwrap());
-                    // Is Important
-                    byte_record.push_field(left.get(3).unwrap());
+                    // Translated
+                    byte_record.push_field(b"");
                     // Left Texts
-                    for fields in 4..left.len() {
+                    for fields in 3..left.len() {
                         byte_record.push_field(left.get(fields).unwrap());
                     }
                     // Right Text
                     byte_record.push_field(b"");
                 }
                 (Some(left), Some(right)) => {
-                    // Translated
-                    byte_record.push_field(b"");
+                    // Message ID
+                    byte_record.push_field(left.get(0).unwrap());
                     // Character
                     byte_record.push_field(left.get(1).unwrap());
-                    // Message ID
-                    byte_record.push_field(left.get(2).unwrap());
-                    // Is Important
-                    byte_record.push_field(left.get(3).unwrap());
+                    // Translated
+                    byte_record.push_field(b"");
                     // Left Texts
-                    for fields in 4..left.len() {
+                    for fields in 3..left.len() {
                         byte_record.push_field(left.get(fields).unwrap());
                     }
                     // Right Text
-                    byte_record.push_field(right.get(4).unwrap());
+                    byte_record.push_field(right.get(3).unwrap());
                 }
             }
             destination.write_byte_record(&byte_record)?;
@@ -182,13 +168,13 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
 
         while source.read_byte_record(&mut tmp_record).is_ok_and(|x| x) {
             // Take the informations like message ID, call ID, Character...
-            byte_record.extend(tmp_record.iter().take(4));
+            byte_record.extend(tmp_record.iter().take(2));
             // Add space for every other column the other file had
-            for _ in 4..usual_header.len() - 1 {
+            for _ in 2..usual_header.len() - 1 {
                 byte_record.push_field(b"");
             }
             // Add the text as the rightest entry
-            byte_record.push_field(&tmp_record[4]);
+            byte_record.push_field(&tmp_record[2]);
             destination.write_byte_record(&byte_record)?;
             byte_record.clear();
         }

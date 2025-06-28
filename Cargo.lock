@@ -644,6 +644,7 @@ dependencies = [
  "diesel",
  "indicatif",
  "itertools",
+ "log",
  "lz4",
  "num",
  "num-derive",

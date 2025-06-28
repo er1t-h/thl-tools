@@ -1,3 +1,6 @@
 mod file;
 
-pub use file::{MBEFile, Sheet};
+pub use file::{
+    ColumnSelectioner, MBEFile, ParseMBEFileError, PublicTableCell as TableCell, RowSelectioner,
+    Sheet,
+};
