@@ -49,7 +49,7 @@ impl<'a> OffsetWriteWrapper<'a> {
     pub fn align(&mut self, alignment: u64, byte: u8) -> io::Result<u64> {
         let alignment = self.offset() as u64 % alignment;
         if alignment > 0 {
-            std::io::copy(&mut std::io::repeat(byte).take(alignment), self.source)
+            std::io::copy(&mut std::io::repeat(byte).take(alignment), self)
         } else {
             Ok(0)
         }

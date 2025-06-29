@@ -1,5 +1,5 @@
 pub mod csv;
-mod helpers;
+pub mod helpers;
 pub mod mbe;
 pub mod mvgl;
 

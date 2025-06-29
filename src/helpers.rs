@@ -1,3 +1,3 @@
-pub mod indicatif;
+pub(crate) mod indicatif;
 pub mod offset_wrapper;
-pub mod traits;
+pub(crate) mod traits;

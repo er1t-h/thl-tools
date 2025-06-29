@@ -1,18 +1,21 @@
 use std::{
     fs::{self, File},
-    io::{self, Read},
-    time::Duration,
+    io::{self, BufWriter, Read},
 };
 
 use atoi::atoi;
+use byte_string::ByteStr;
 use csv::Reader;
 use indicatif::MultiProgress;
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
 use crate::{
-    helpers::traits::{ReadSeekSendSync, WriteSeek},
-    mbe::{MBEFile, TableCell},
+    helpers::{
+        offset_wrapper::OffsetWriteWrapper,
+        traits::{ReadSeekSendSync, WriteSeek},
+    },
+    mbe::{ColumnType, MBEFile, TableCell},
     mvgl::{Extractor, Packer},
 };
 
@@ -62,8 +65,6 @@ impl<'a> DialogueRepacker<'a> {
             .extract(reference_mvgl, extracted_dir.path())?;
 
         let translation_dir = TempDir::new()?;
-        // eprintln!("{}", csv_dir.path().display());
-        // std::thread::sleep(Duration::from_secs(60));
         for file in WalkDir::new(extracted_dir.path()) {
             let file = file?;
             let file_relative_path = file.path().strip_prefix(extracted_dir.path()).unwrap();
@@ -78,25 +79,55 @@ impl<'a> DialogueRepacker<'a> {
                 .with_extension("csv");
             let dest = translation_dir.path().join(file_relative_path);
 
-            let mut source = MBEFile::from_path(&file.path()).unwrap();
+            let mut source = MBEFile::from_path(file.path()).unwrap();
 
             if let Ok(reader) = Reader::from_path(&csv_path) {
-                for (i, entry) in reader.into_byte_records().enumerate() {
+                for entry in reader.into_byte_records() {
                     let entry = entry?;
                     let mut rows = source.rows();
-                    if let Some(row_id) = rows.by_ref().position(|x| match x[0] {
+                    if rows.by_ref().any(|x| match x[0] {
                         TableCell::Int(x) | TableCell::IntID(x) => x == atoi(&entry[0]).unwrap(),
                         TableCell::StringID(Some(x)) | TableCell::String(Some(x)) => x == &entry[0],
                         _ => panic!(),
-                    }) {
-                        if !entry[2].is_empty() {
-                            source.modify_string(rows.sheet(), rows.row(), 2, entry[2].to_vec());
+                    }) && !entry[2].is_empty()
+                    {
+                        let (sheet, row) = if rows.row() == 0 {
+                            let x = source.get_sheet_by_index(rows.sheet() - 1).unwrap();
+                            (rows.sheet() - 1, x.number_of_row().saturating_sub(1))
+                        } else {
+                            (rows.sheet(), rows.row() - 1)
+                        };
+                        let column = if let Some(sheet) = source.get_sheet_by_index(sheet)
+                            && let Some(content) = sheet
+                                .column_types()
+                                .iter()
+                                .position(|&x| x == ColumnType::String)
+                        {
+                            content
+                        } else {
+                            1
+                        };
+                        if csv_path.ends_with("help_tutorial_text.csv") {
+                            println!(
+                                "{:?}",
+                                source.get_sheet_by_index(sheet).unwrap().column_types()
+                            );
+                            println!(
+                                "modifying string from sheet{sheet}, row{row} and column{column} to {:?}",
+                                ByteStr::new(&entry[2])
+                            );
+                            println!(
+                                "{:?}",
+                                source.modify_string(sheet, row, column, entry[2].to_vec())
+                            );
+                        } else {
+                            source.modify_string(sheet, row, column, entry[2].to_vec());
                         }
                     }
                 }
             }
-            let mut dest_file = File::create_new(&dest)?;
-            source.write(&mut dest_file)?;
+            let mut dest_file = BufWriter::new(File::create_new(&dest)?);
+            source.write(&mut OffsetWriteWrapper::new(&mut dest_file))?;
         }
 
         Packer::new()

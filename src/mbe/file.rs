@@ -54,6 +54,19 @@ enum TableCell {
     StringID(u32),
 }
 
+impl TableCell {
+    pub fn type_(self) -> ColumnType {
+        match self {
+            Self::Int(_) => ColumnType::Int,
+            Self::IntID(_) => ColumnType::IntID,
+            Self::StringID(_) => ColumnType::StringID,
+            Self::String(_) => ColumnType::String,
+            Self::Float(_) => ColumnType::Float,
+            Self::Byte(_) => ColumnType::Byte,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TableCreateCell<'a> {
     Int(u32),
@@ -150,6 +163,18 @@ pub enum ParseMBEFileError {
     Io(io::Error),
 }
 
+impl Display for ParseMBEFileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BadEXPAMagicNumber => write!(f, "expected EXPA as a magic number"),
+            Self::InvalidColumnType => write!(f, "specified column type is not valid"),
+            Self::BadCHNKMagicNumber => write!(f, "expected CHNK as a magic number"),
+            Self::Io(x) => write!(f, "io error: {x}"),
+        }
+    }
+}
+impl std::error::Error for ParseMBEFileError {}
+
 impl From<io::Error> for ParseMBEFileError {
     fn from(value: io::Error) -> Self {
         Self::Io(value)
@@ -235,9 +260,9 @@ impl MBEFile {
                 let row_length = source.read_u32::<LittleEndian>()?;
                 let row_number = source.read_u32::<LittleEndian>()?;
                 let mut row_buffer = vec![0; row_length as usize];
+                source.align(8)?;
                 let rows = (0..row_number)
                     .map(|_| {
-                        source.align(8)?;
                         let row_offset = source.offset() as u32;
                         source.read_exact(&mut row_buffer)?;
                         let mut source = Cursor::new(&row_buffer);
@@ -259,6 +284,7 @@ impl MBEFile {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        source.align(8)?;
         if matches!(source.read_exact(&mut magic_number), Err(x) if x.kind() == ErrorKind::UnexpectedEof)
         {
             return Ok(Self {
@@ -347,6 +373,7 @@ impl MBEFile {
         for skipped_sheet in self.sheets.iter().take(sheet) {
             offset += skipped_sheet.name.len().next_multiple_of(4)
                 + 4 * (skipped_sheet.column_types.len() + 4);
+            offset = offset.next_multiple_of(8);
             let mut one_line = 0_usize;
             for col_type in &skipped_sheet.column_types {
                 one_line = one_line.next_multiple_of(col_type.alignment() as usize);
@@ -356,8 +383,9 @@ impl MBEFile {
         }
 
         let sheet = self.sheets.get(sheet)?;
-
         offset += sheet.name.len().next_multiple_of(4) + 4 * (sheet.column_types.len() + 4);
+        offset = offset.next_multiple_of(8);
+
         let mut one_line = 0_usize;
         let mut up_to_column = 0_usize;
         for (i, col_type) in sheet.column_types.iter().enumerate() {
@@ -374,6 +402,58 @@ impl MBEFile {
         } else {
             None
         }
+    }
+
+    pub fn write(&self, writer: &mut OffsetWriteWrapper) -> io::Result<()> {
+        writer.write_all(b"EXPA")?;
+        writer.write_u32::<LittleEndian>(self.sheets.len() as u32)?;
+
+        for sheet in &self.sheets {
+            write_size_prefixed_string(ByteStr::new(&sheet.name), writer, 0)?;
+            writer.write_u32::<LittleEndian>(sheet.column_types.len() as u32)?;
+            let mut sink = io::sink();
+            let mut length = OffsetWriteWrapper::new(&mut sink);
+            for type_ in &sheet.column_types {
+                writer.write_u32::<LittleEndian>(*type_ as u32)?;
+                length.align(type_.alignment(), 0)?;
+                match type_ {
+                    ColumnType::StringID | ColumnType::String => {
+                        length.write_u64::<LittleEndian>(0)?
+                    }
+                    ColumnType::Float | ColumnType::Int | ColumnType::IntID => {
+                        length.write_u32::<LittleEndian>(0)?
+                    }
+                    ColumnType::Byte => length.write_u8(0)?,
+                }
+            }
+            writer.write_u32::<LittleEndian>(length.offset() as u32)?;
+            writer.write_u32::<LittleEndian>(sheet.rows.len() as u32)?;
+            writer.align(8, 0)?;
+            for column in sheet.rows.iter().flatten() {
+                writer.align(column.type_().alignment(), 0xcc)?;
+                match column {
+                    &TableCell::Int(x) | &TableCell::IntID(x) => {
+                        writer.write_u32::<LittleEndian>(x)?
+                    }
+                    &TableCell::Byte(x) => writer.write_u8(x)?,
+                    &TableCell::Float(x) => writer.write_f32::<LittleEndian>(x)?,
+                    TableCell::String(_) | TableCell::StringID(_) => {
+                        writer.write_u64::<LittleEndian>(0)?;
+                    }
+                }
+            }
+        }
+
+        writer.align(8, 0)?;
+        writer.write_all(b"CHNK")?;
+        writer.write_u32::<LittleEndian>(self.data.len() as u32)?;
+
+        for (id, string) in &self.data {
+            writer.write_u32::<LittleEndian>(*id)?;
+            write_size_prefixed_string(ByteStr::new(string), writer, 1)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -396,8 +476,19 @@ impl<'a> RowSelectioner<'a> {
         }
     }
 
+    pub fn get_file(&self) -> &'a MBEFile {
+        self.file
+    }
+
     pub fn column_types(self) -> &'a [ColumnType] {
         &self.file.sheets[self.sheet_index].column_types
+    }
+
+    pub fn number_of_row(&self) -> usize {
+        self.file
+            .sheets
+            .get(self.sheet_index)
+            .map_or(0, |x| x.rows.len())
     }
 }
 
@@ -458,12 +549,14 @@ pub struct MBEFileCreator<'a> {
 fn write_size_prefixed_string(
     str: &ByteStr,
     writer: &mut OffsetWriteWrapper,
+    nul_byte: usize,
 ) -> std::io::Result<()> {
-    let pad = 4 - str.len() % 4;
-    let padded_len = str.len() + pad;
+    let len = str.len() + nul_byte; // accounting for nul byte
+    let pad = 4 - len % 4;
+    let padded_len = len + pad;
     writer.write_u32::<LittleEndian>(padded_len as u32)?;
     writer.write_all(str)?;
-    io::copy(&mut io::repeat(0).take(pad as u64), writer)?;
+    io::copy(&mut io::repeat(0).take((pad + nul_byte) as u64), writer)?;
     Ok(())
 }
 
@@ -474,7 +567,7 @@ impl MBEFileCreator<'_> {
         let mut data = Vec::new();
 
         for sheet in &self.sheets {
-            write_size_prefixed_string(ByteStr::new(&sheet.name), writer)?;
+            write_size_prefixed_string(ByteStr::new(&sheet.name), writer, 0)?;
             writer.write_u32::<LittleEndian>(sheet.column_types.len() as u32)?;
             let mut sink = io::sink();
             let mut length = OffsetWriteWrapper::new(&mut sink);
@@ -483,12 +576,12 @@ impl MBEFileCreator<'_> {
                 length.align(type_.alignment(), 0)?;
                 match type_ {
                     ColumnType::StringID | ColumnType::String => {
-                        writer.write_u64::<LittleEndian>(0)?
+                        length.write_u64::<LittleEndian>(0)?
                     }
                     ColumnType::Float | ColumnType::Int | ColumnType::IntID => {
-                        writer.write_u32::<LittleEndian>(0)?
+                        length.write_u32::<LittleEndian>(0)?
                     }
-                    ColumnType::Byte => writer.write_u8(0)?,
+                    ColumnType::Byte => length.write_u8(0)?,
                 }
             }
             length.align(4, 0)?;
@@ -510,9 +603,12 @@ impl MBEFileCreator<'_> {
             }
         }
 
+        writer.write_all(b"CHNK")?;
+        writer.write_u32::<LittleEndian>(data.len() as u32)?;
+
         for (id, string) in data {
             writer.write_u32::<LittleEndian>(id)?;
-            write_size_prefixed_string(string, writer)?;
+            write_size_prefixed_string(string, writer, 1)?;
         }
 
         Ok(())

@@ -61,12 +61,12 @@ pub fn fuse_csv(first_source: &Path, second_source: &Path, destination: &Path) -
 
         let mut source_2 = csv::Reader::from_path(second_source)?;
         let mut source_1 = csv::Reader::from_path(first_source)?;
-        let number_of_language_in_src_1 = source_1.byte_headers().unwrap().len() - 2;
+        let number_of_language_in_src_1 = source_1.byte_headers().unwrap().len() - 3;
 
         let header = {
             let mut first_header = source_1.byte_headers().unwrap().clone();
             let second_header = source_2.byte_headers().unwrap();
-            first_header.push_field(&second_header[2]);
+            first_header.push_field(&second_header[3]);
             if usual_header.is_none() {
                 usual_header = Some(first_header.clone());
             }
