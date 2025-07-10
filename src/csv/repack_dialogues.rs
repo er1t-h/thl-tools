@@ -107,21 +107,13 @@ impl<'a> DialogueRepacker<'a> {
                         } else {
                             1
                         };
-                        if csv_path.ends_with("help_tutorial_text.csv") {
-                            println!(
-                                "{:?}",
-                                source.get_sheet_by_index(sheet).unwrap().column_types()
+                        let res = source.modify_string(sheet, row, column, entry[2].to_vec());
+                        if res.is_none() {
+                            log::info!(
+                                "skipping string {:?}, in file {}, at sheet {sheet}, row {row} and column {column}",
+                                ByteStr::new(&entry[2]),
+                                csv_path.display()
                             );
-                            println!(
-                                "modifying string from sheet{sheet}, row{row} and column{column} to {:?}",
-                                ByteStr::new(&entry[2])
-                            );
-                            println!(
-                                "{:?}",
-                                source.modify_string(sheet, row, column, entry[2].to_vec())
-                            );
-                        } else {
-                            source.modify_string(sheet, row, column, entry[2].to_vec());
                         }
                     }
                 }

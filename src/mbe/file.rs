@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{
     borrow::Cow,
     fmt::{Debug, Display},
@@ -383,7 +385,7 @@ impl MBEFile {
         }
 
         let sheet = self.sheets.get(sheet)?;
-        offset += sheet.name.len().next_multiple_of(4) + 4 * (sheet.column_types.len() + 4);
+        offset += (sheet.name.len() + 1).next_multiple_of(4) + 4 * (sheet.column_types.len() + 4);
         offset = offset.next_multiple_of(8);
 
         let mut one_line = 0_usize;
