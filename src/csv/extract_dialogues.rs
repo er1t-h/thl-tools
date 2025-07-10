@@ -84,7 +84,6 @@ impl<'a> DialogueExtractor<'a> {
 
             for file in WalkDir::new(extracted_language_dir) {
                 let file = file?;
-                eprintln!("{}", file.path().display());
                 //if (!file
                 //    .path()
                 //    .ends_with("s15_a_deathgam_aaaab_d078_m020_010.mbe"))
