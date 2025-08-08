@@ -33,6 +33,7 @@ pub enum Character {
     Nigou = 0x13,
     TakumiCombatForm = 0x63,
     Murvrum = 0x65,
+    Parmith = 0x69,
     ZenTa = 0x6B,
     VallaGarzo = 0x6C,
     Vexhness = 0x71,
@@ -40,6 +41,7 @@ pub enum Character {
     KaruaChildForm = 0xCB,
     TakumisMom = 0xC9,
     Kamyuhn = 0xD2,
+    VexhnessII = 0x10E,
     SireiCutscene = 0x12E,
     DefenseSystem = 0x12F,
     Announcement = 0x130,
@@ -75,6 +77,7 @@ impl Character {
             Self::Nigou => "Nigou",
             Self::TakumiCombatForm => "Takumi (Combat Form)",
             Self::Murvrum => "Murvrum",
+            Self::Parmith => "Parmith",
             Self::ZenTa => "Zen'ta",
             Self::VallaGarzo => "Valla-Garzo",
             Self::Vexhness => "V'exhness",
@@ -82,6 +85,7 @@ impl Character {
             Self::KaruaChildForm => "Karua (Child)",
             Self::TakumisMom => "Takumi's Mom",
             Self::Kamyuhn => "Kamyuhn",
+            Self::VexhnessII => "VexhnessII",
             Self::SireiCutscene => "Sirei (Cutscene)",
             Self::DefenseSystem => "Defense System",
             Self::Announcement => "Announcement",
@@ -117,9 +121,11 @@ impl Character {
             "Nigou" => Self::Nigou,
             "Takumi (Combat Form)" => Self::TakumiCombatForm,
             "Murvrum" => Self::Murvrum,
+            "Parmith" => Self::Parmith,
             "Zen'ta" => Self::ZenTa,
             "Valla-Garzo" => Self::VallaGarzo,
             "V'exhness" => Self::Vexhness,
+            "V'exhness II" => Self::VexhnessII,
             "Karua" => Self::Karua,
             "Karua (Child)" => Self::KaruaChildForm,
             "Takumi's Mom" => Self::TakumisMom,
@@ -169,63 +175,4 @@ impl From<PlaceholderOrCharacter> for u32 {
             PlaceholderOrCharacter::Placeholder(x) => x,
         }
     }
-}
-
-#[cfg(feature = "diesel")]
-mod diesel_sql {
-    use diesel::{
-        Expression, Insertable, Queryable,
-        backend::Backend,
-        deserialize::FromSql,
-        serialize::{IsNull, ToSql},
-        sql_types::Integer,
-    };
-
-    use crate::PlaceholderOrCharacter;
-
-    impl<DB> FromSql<Integer, DB> for PlaceholderOrCharacter
-    where
-        DB: Backend,
-        i32: FromSql<Integer, DB>,
-    {
-        fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-            Ok(PlaceholderOrCharacter::from(i32::from_sql(bytes)? as u32))
-        }
-    }
-
-    impl<DB> ToSql<Integer, DB> for PlaceholderOrCharacter
-    where
-        DB: Backend,
-        i32: ToSql<Integer, DB>,
-    {
-        fn to_sql<'b>(
-            &'b self,
-            out: &mut diesel::serialize::Output<'b, '_, DB>,
-        ) -> diesel::serialize::Result {
-            write!(out, "{}", u32::from(*self) as i32);
-            Ok(IsNull::No)
-        }
-    }
-
-    //impl<DB> Queryable<Integer, DB> for PlaceholderOrCharacter
-    //where
-    //    DB: Backend,
-    //    i32: FromSql<Integer, DB>,
-    //{
-    //    type Row = i32;
-    //    fn build(row: i32) -> diesel::deserialize::Result<Self> {
-    //        Ok(PlaceholderOrCharacter::from(row as u32))
-    //    }
-    //}
-    //
-    //impl<T> Insertable<T> for PlaceholderOrCharacter {
-    //    type Values = i32;
-    //    fn values(self) -> Self::Values {
-    //        u32::from(self) as i32
-    //    }
-    //}
-    //
-    //impl Expression for PlaceholderOrCharacter {
-    //    type SqlType = Integer;
-    //}
 }

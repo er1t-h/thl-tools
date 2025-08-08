@@ -29,6 +29,7 @@ pub enum ColumnType {
 }
 
 impl ColumnType {
+    /// The size of the field.
     pub fn size(self) -> usize {
         match self {
             Self::StringID | Self::String => 8,
@@ -37,6 +38,7 @@ impl ColumnType {
         }
     }
 
+    /// The alignment for each field.
     pub fn alignment(self) -> u64 {
         match self {
             Self::StringID | Self::String => 8,

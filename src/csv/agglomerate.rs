@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsStr,
     io::{self, Write},
     path::Path,
 };
@@ -23,10 +24,14 @@ pub fn agglomerate_csv(source: &Path, destination: &mut dyn Write) -> io::Result
         .enumerate()
     {
         let file = file?;
-        if is_hidden(&file) || !file.file_type().is_file() {
+        if is_hidden(&file)
+            || !file.file_type().is_file()
+            || file.path().extension() != Some(OsStr::new("csv"))
+        {
             continue;
         }
         let path = file.path();
+        eprintln!("{}", path.display());
         let mut file = csv::ReaderBuilder::new().from_path(path)?;
         if i == 0 {
             file.byte_headers()?.clone_into(&mut record);
