@@ -139,7 +139,6 @@ impl<'a> DialogueExtractor<'a> {
             .with_style(default_spinner_style())
             .with_message("agglomerating CSVs");
         progress_bar.enable_steady_tick(Duration::from_millis(200));
-        eprintln!("aglomerating");
         crate::csv::agglomerate::agglomerate_csv(main.path(), destination)?;
         progress_bar.finish_and_clear();
 
