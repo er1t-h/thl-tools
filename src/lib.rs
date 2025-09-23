@@ -8,144 +8,82 @@ use std::borrow::Cow;
 use num::FromPrimitive;
 use num_derive::FromPrimitive;
 
-#[repr(u32)]
-#[derive(FromPrimitive, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Character {
-    None = 0x0,
-    Takumi = 0x1,
-    Takemaru = 0x2,
-    Hiruko = 0x3,
-    Darumi = 0x4,
-    Eito = 0x5,
-    Tsubasa = 0x6,
-    Gaku = 0x7,
-    Ima = 0x8,
-    Kako = 0x9,
-    Shouma = 0xA,
-    Nozomi = 0xB,
-    Kurara = 0xC,
-    Kyoshika = 0xD,
-    Yugamu = 0xE,
-    Moko = 0xF,
-    Eva = 0x10,
-    Shion = 0x11,
-    Sirei = 0x12,
-    Nigou = 0x13,
-    TakumiCombatForm = 0x63,
-    Murvrum = 0x65,
-    Parmith = 0x69,
-    ZenTa = 0x6B,
-    VallaGarzo = 0x6C,
-    Vexhness = 0x71,
-    Karua = 0xCA,
-    KaruaChildForm = 0xCB,
-    TakumisMom = 0xC9,
-    Kamyuhn = 0xD2,
-    VexhnessII = 0x10E,
-    SireiCutscene = 0x12E,
-    DefenseSystem = 0x12F,
-    Announcement = 0x130,
-    Thought = 0x131,
-    PASystem = 0x132,
-    Lock = 0x134,
-    Door = 0x136,
-    Text = 0xCCCCCCCC,
+macro_rules! create_characters {
+    ($($variant: ident $name: literal $nb: literal),+) => {
+        #[repr(u32)]
+        #[derive(FromPrimitive, Clone, Copy, Debug, PartialEq, Eq)]
+        pub enum Character {
+            $($variant = $nb),+
+        }
+
+        impl Character {
+            pub fn name(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $name),+
+                }
+            }
+
+            pub fn from_name(value: &str) -> Option<Self> {
+                Some(match value {
+                    $($name => Self::$variant,)+
+                    _ => return None,
+                })
+            }
+        }
+    };
 }
 
-impl Character {
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::None => "None",
-            Self::Takumi => "Takumi",
-            Self::Takemaru => "Takemaru",
-            Self::Hiruko => "Hiruko",
-            Self::Darumi => "Darumi",
-            Self::Eito => "Eito",
-            Self::Tsubasa => "Tsubasa",
-            Self::Gaku => "Gaku",
-            Self::Ima => "Ima",
-            Self::Kako => "Kako",
-            Self::Shouma => "Shouma",
-            Self::Nozomi => "Nozomi",
-            Self::Kurara => "Kurara",
-            Self::Kyoshika => "Kyoshika",
-            Self::Yugamu => "Yugamu",
-            Self::Moko => "Moko",
-            Self::Eva => "Eva",
-            Self::Shion => "Shion",
-            Self::Sirei => "Sirei",
-            Self::Nigou => "Nigou",
-            Self::TakumiCombatForm => "Takumi (Combat Form)",
-            Self::Murvrum => "Murvrum",
-            Self::Parmith => "Parmith",
-            Self::ZenTa => "Zen'ta",
-            Self::VallaGarzo => "Valla-Garzo",
-            Self::Vexhness => "V'exhness",
-            Self::Karua => "Karua",
-            Self::KaruaChildForm => "Karua (Child)",
-            Self::TakumisMom => "Takumi's Mom",
-            Self::Kamyuhn => "Kamyuhn",
-            Self::VexhnessII => "VexhnessII",
-            Self::SireiCutscene => "Sirei (Cutscene)",
-            Self::DefenseSystem => "Defense System",
-            Self::Announcement => "Announcement",
-            Self::Thought => "Thought",
-            Self::PASystem => "PA System",
-            Self::Lock => "Lock",
-            Self::Door => "Door",
-            Self::Text => "Text",
-        }
-    }
-
-    pub fn from_name(value: &str) -> Option<Character> {
-        Some(match value {
-            "None" => Self::None,
-            "Takumi" => Self::Takumi,
-            "Takemaru" => Self::Takemaru,
-            "Hiruko" => Self::Hiruko,
-            "Darumi" => Self::Darumi,
-            "Eito" => Self::Eito,
-            "Tsubasa" => Self::Tsubasa,
-            "Gaku" => Self::Gaku,
-            "Ima" => Self::Ima,
-            "Kako" => Self::Kako,
-            "Shouma" => Self::Shouma,
-            "Nozomi" => Self::Nozomi,
-            "Kurara" => Self::Kurara,
-            "Kyoshika" => Self::Kyoshika,
-            "Yugamu" => Self::Yugamu,
-            "Moko" => Self::Moko,
-            "Eva" => Self::Eva,
-            "Shion" => Self::Shion,
-            "Sirei" => Self::Sirei,
-            "Nigou" => Self::Nigou,
-            "Takumi (Combat Form)" => Self::TakumiCombatForm,
-            "Murvrum" => Self::Murvrum,
-            "Parmith" => Self::Parmith,
-            "Zen'ta" => Self::ZenTa,
-            "Valla-Garzo" => Self::VallaGarzo,
-            "V'exhness" => Self::Vexhness,
-            "V'exhness II" => Self::VexhnessII,
-            "Karua" => Self::Karua,
-            "Karua (Child)" => Self::KaruaChildForm,
-            "Takumi's Mom" => Self::TakumisMom,
-            "Kamyuhn" => Self::Kamyuhn,
-            "Sirei (Cutscene)" => Self::SireiCutscene,
-            "Defense System" => Self::DefenseSystem,
-            "Announcement" => Self::Announcement,
-            "Thought" => Self::Thought,
-            "PA System" => Self::PASystem,
-            "Lock" => Self::Lock,
-            "Door" => Self::Door,
-            "Text" => Self::Text,
-            _ => return None,
-        })
-    }
+create_characters! {
+//  Variant                 Name                        Numeric Value
+    None                    "None"                      0x0,
+    Takumi                  "Takumi"                    0x1,
+    Takemaru                "Takemaru"                  0x2,
+    Hiruko                  "Hiruko"                    0x3,
+    Darumi                  "Darumi"                    0x4,
+    Eito                    "Eito"                      0x5,
+    Tsubasa                 "Tsubasa"                   0x6,
+    Gaku                    "Gaku"                      0x7,
+    Ima                     "Ima"                       0x8,
+    Kako                    "Kako"                      0x9,
+    Shouma                  "Shouma"                    0xA,
+    Nozomi                  "Nozomi"                    0xB,
+    Kurara                  "Kurara"                    0xC,
+    Kyoshika                "Kyoshika"                  0xD,
+    Yugamu                  "Yugamu"                    0xE,
+    Moko                    "Moko"                      0xF,
+    Eva                     "Eva"                       0x10,
+    Shion                   "Shion"                     0x11,
+    Sirei                   "Sirei"                     0x12,
+    Nigou                   "Nigou"                     0x13,
+    TakumiCombatForm        "Takumi (Combat Form)"      0x63,
+    Murvrum                 "Murvrum"                   0x65,
+    Parmith                 "Parmith"                   0x69,
+    ZenTa                   "Zen'ta"                    0x6B,
+    VallaGarzo              "Valla-Garzo"               0x6C,
+    Vexhness                "V'exhness"                 0x71,
+    Karua                   "Karua"                     0xCA,
+    KaruaChildForm          "Karua (Child)"             0xCB,
+    TakumisMom              "Takumi's Mom"              0xC9,
+    Kamyuhn                 "Kamyuhn"                   0xD2,
+    KakoG                   "Kako-G"                    0xD7,
+    TakumiII                "Takumi II"                 0xFB,
+    Eito2                   "Eito 2"                    0xFF,
+    VexhnessII              "V'exhness II"              0x10E,
+    Eito3                   "Eito 3"                    0x10F,
+    Eito4                   "Eito 4"                    0x110,
+    Eito5                   "Eito 5"                    0x111,
+    Eito6                   "Eito 6"                    0x112,
+    SireiCutscene           "Sirei (Cutscene)"          0x12E,
+    DefenseSystem           "Defense System"            0x12F,
+    Announcement            "Announcement"              0x130,
+    Thought                 "Thought"                   0x131,
+    PASystem                "PA System"                 0x132,
+    Lock                    "Lock"                      0x134,
+    Door                    "Door"                      0x136,
+    Text                    "Text"                      0xCCCCCCCC
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "diesel", derive(diesel::AsExpression, diesel::FromSqlRow))]
-#[cfg_attr(feature = "diesel", sql_type = "Character")]
 pub enum PlaceholderOrCharacter {
     Character(Character),
     Placeholder(u32),
