@@ -55,13 +55,13 @@ create_characters! {
     Shion                   "Shion"                     0x11,
     Sirei                   "Sirei"                     0x12,
     Nigou                   "Nigou"                     0x13,
-    TakumiCombatForm        "Takumi Sumino"             0x63,
+    TakumiCombatForm        "Takumi Sumino (SDU)"       0x63,
     Murvrum                 "Murvrum"                   0x65, // Paragon of Order
     Pakron                  "Pakron"                    0x66, // Paragon of Virtue
     Addamaque               "Addamaque"                 0x67, // Paragon of Hatred
     Quenzelle               "Quenzelle"                 0x68, // Paragon of Repulsion
     Parmith                 "Parmith"                   0x69, // Paragon of Devotion
-    EvaParagon              "Eva"                       0x6A, // Paragon of Nature
+    EvaParagon              "Eva (Paragon of Nature)"   0x6A, // Paragon of Nature
     ZenTa                   "Zen'ta"                    0x6B, // Paragon of Harmony
     VallaGarzo              "Valla-Garzo"               0x6C, // Paragon of Indomitability
     Szanshin                "Szanshin"                  0x6D, // Paragon of Salvation
@@ -77,7 +77,7 @@ create_characters! {
     PersonInLeapSuit        "Person in Leap Suit"       0xCE,
     GhostlyWoman            "Ghostly Woman"             0xCF,
     FigureInBlack           "Figure in Black"           0xD0,
-    OldMan                  "Old Man"                   0xD1,
+    TheOldMan               "The Old Man"               0xD1,
     Kamyuhn                 "Kamyuhn"                   0xD2,
     Villager                "Villager"                  0xD3,
     VillageWoman            "Village Woman"             0xD4,
@@ -125,7 +125,7 @@ create_characters! {
     All                     "All"                       0x12D,
     Unknown                 "???"                       0x12E,
     DefenseSystem           "Defense System"            0x12F,
-    Announcement            "Announcement"              0x130,
+    Announcement            "Announcement (Unused)"     0x130,
     Thought                 "<Thought>"                 0x131, // empty internally
     PASystem                "PA System"                 0x132,
     Bell                    "Bell"                      0x133,
@@ -155,7 +155,7 @@ create_characters! {
     Shadow                  "Shadow"                    0x14C,
     GieQueen                "G'ie Queen"                0x14D,
     FB                      "FB"                        0x14E,
-    All2                    "All"                       0x14F,
+    All2                    "Everyone"                  0x14F, // All
     NigouQuestion           "Nigou?"                    0x150,
     Goldie                  "Goldie"                    0x151,
     NozomiII                "Nozomi II"                 0x152,
@@ -171,7 +171,7 @@ create_characters! {
     YoungWoman              "Young Woman"               0x15C,
     MiddleAgedMan           "Middle-Aged Man"           0x15D,
     MiddleAgedWoman         "Middle-Aged Woman"         0x15E,
-    OldMan2                 "Old Man"                   0x15F,
+    OldMan                  "Old Man"                   0x15F,
     OldWoman                "Old Woman"                 0x160,
     EvaQuestion             "Eva?"                      0x161,
     MokoQuestion            "Moko?"                     0x162,
@@ -185,7 +185,7 @@ create_characters! {
     HolyJumonjiSword        "Holy Jumonji Sword"        0x16A,
     Darumarr                "Darumarr"                  0x16B,
     StrangeInvader          "Strange Invader"           0x16C,
-    TakumiQuestion          "Takumi?"                   0x16D,
+    TakumiQuestionUnused    "Takumi? (Unused)"          0x16D,
     EitoAotsuki2            "Eito Aotsuki 2"            0x16E,
     EitoAotsuki3            "Eito Aotsuki 3"            0x16F,
     EitoAotsuki4            "Eito Aotsuki 4"            0x170,
@@ -193,7 +193,7 @@ create_characters! {
     EitoAotsuki6            "Eito Aotsuki 6"            0x172,
     Interviewer             "Interviewer"               0x173,
     Announcement2           "Announcement"              0x174,
-    TakumiQuestion2         "Takumi?"                   0x175,
+    TakumiQuestion          "Takumi?"                   0x175,
     HirukoQuestion          "Hiruko?"                   0x176,
     Sponsor2Unused          "Sponsor 2 (Unused)"        0x177,
     Sponsor3Unused          "Sponsor 3 (Unused)"        0x178,
@@ -219,6 +219,7 @@ create_characters! {
     MokoAndKurara           "Moko & Kurara"             0x18D,
     TakumiAndHiruko         "Takumi & Hiruko"           0x18E,
 
+/*
     BattleTakumiSumino                       "Takumi Sumino"                 0xF468D,
     BattleTakemaruYakushiji                  "Takemaru Yakushiji"            0xF4A75,
     BattleHirukoShizuhara                    "Hiruko Shizuhara"              0xF4E5D,
@@ -325,8 +326,10 @@ create_characters! {
     BattleAddamaque                          "Addamaque"                     0x269F27,
     BattleAddamaqueQ                         "Addamaque?"                    0x26C187,
     BattleSquadThreeCommanderQ               "Squad Three Commander?"        0x26C188,
+*/
     BattleSquadFourCommander                 "Squad Four Commander"          0x26C62D, // Quenzelle
-    BattleSquadFourCommanderMk2              "Squad Four Commander Mk.2"     0x26C62E,
+/*
+BattleSquadFourCommanderMk2              "Squad Four Commander Mk.2"     0x26C62E,
     BattleQuenzelle                          "Quenzelle"                     0x26C638,
     BattleStrangeEgg                         "Strange Egg"                   0x26CDFD,
     BattleStrangeEgg2                        "Strange Egg"                   0x26CDFE,
@@ -374,7 +377,9 @@ create_characters! {
     BattleDahlXia2                           "Dahl'xia"                      0x27FEAE,
     BattleUnknown                            "???"                           0x280295,
     BattleStrangeEnemy                       "Strange Enemy"                 0x2825BD,
+*/
     BattleSupremeCommander                   "Supreme Commander"             0x2825BE, // V'ehxness
+/*
     BattleSupremeCommander2                  "Supreme Commander"             0x2825BF,
     BattleVehxness                           "V'ehxness"                     0x2825C0,
     BattleVehxness2                          "V'ehxness"                     0x2825C1,
@@ -534,7 +539,7 @@ create_characters! {
     BattleMissileX                           "Missile X"                     0x3D0DBA,
     BattleN3DModel                           "3D Model"                      0x895829,
     BattleParallaxOcclusion                  "Parallax Occlusion"            0x89582A,
-
+*/
     Text                    "Text"                      0xCCCCCCCC
 }
 
