@@ -36,34 +36,43 @@ macro_rules! create_characters {
 create_characters! {
 //  Variant                 Name                        Numeric Value
     None                    "None"                      0x0,
-    Takumi                  "Takumi"                    0x1,
-    Takemaru                "Takemaru"                  0x2,
-    Hiruko                  "Hiruko"                    0x3,
-    Darumi                  "Darumi"                    0x4,
-    Eito                    "Eito"                      0x5,
-    Tsubasa                 "Tsubasa"                   0x6,
-    Gaku                    "Gaku"                      0x7,
-    Ima                     "Ima"                       0x8,
-    Kako                    "Kako"                      0x9,
-    Shouma                  "Shouma"                    0xA,
-    Nozomi                  "Nozomi"                    0xB,
-    Kurara                  "Kurara"                    0xC,
-    Kyoshika                "Kyoshika"                  0xD,
-    Yugamu                  "Yugamu"                    0xE,
-    Moko                    "Moko"                      0xF,
+    Takumi                  "Takumi Sumino"             0x1,
+    Takemaru                "Takemaru Yakushiji"        0x2,
+    Hiruko                  "Hiruko Shizuhara"          0x3,
+    Darumi                  "Darumi Amemiya"            0x4,
+    Eito                    "Eito Aotsuki"              0x5,
+    Tsubasa                 "Tsubasa Kawana"            0x6,
+    Gaku                    "Gaku Maruko"               0x7,
+    Ima                     "Ima Tsukumo"               0x8,
+    Kako                    "Kako Tsukumo"              0x9,
+    Shouma                  "Shouma Ginzaki"            0xA,
+    Nozomi                  "Nozomi Kirifuji"           0xB,
+    Kurara                  "Kurara Oosuzuki"           0xC,
+    Kyoshika                "Kyoshika Magadori"         0xD,
+    Yugamu                  "Yugamu Omokage"            0xE,
+    Moko                    "Moko Mojiro"               0xF,
     Eva                     "Eva"                       0x10,
     Shion                   "Shion"                     0x11,
     Sirei                   "Sirei"                     0x12,
     Nigou                   "Nigou"                     0x13,
     TakumiCombatForm        "Takumi (Combat Form)"      0x63,
-    Murvrum                 "Murvrum"                   0x65,
-    Parmith                 "Parmith"                   0x69,
-    ZenTa                   "Zen'ta"                    0x6B,
-    VallaGarzo              "Valla-Garzo"               0x6C,
-    Vexhness                "V'exhness"                 0x71,
+    Murvrum                 "Murvrum"                   0x65, // Paragon of Order
+    Pakron                  "Pakron"                    0x66, // Paragon of Virtue
+    Addamaque               "Addamaque"                 0x67, // Paragon of Hatred
+    Quenzelle               "Quenzelle"                 0x68, // Paragon of Repulsion
+    Parmith                 "Parmith"                   0x69, // Paragon of Devotion
+                                                     // 0x6A, // Paragon of Nature
+    ZenTa                   "Zen'ta"                    0x6B, // Paragon of Harmony
+    VallaGarzo              "Valla-Garzo"               0x6C, // Paragon of Indomitability
+    Szanshin                "Szanshin"                  0x6D, // Paragon of Salvation
+    Nyewgank                "Nyewgank"                  0x6E, // Paragon of Charity
+    Turamtammi              "Turamtammi"                0x6F, // Paragon of Reverie
+    Dahlxia                 "Dahl'xia"                  0x70, // Paragon of Warfare
+    Vexhness                "V'exhness"                 0x71, // Paragon of Hope
     Karua                   "Karua"                     0xCA,
     KaruaChildForm          "Karua (Child)"             0xCB,
     TakumisMom              "Takumi's Mom"              0xC9,
+    OldMan                  "Old Man"                   0xD1,
     Kamyuhn                 "Kamyuhn"                   0xD2,
     KakoG                   "Kako-G"                    0xD7,
     TakumiII                "Takumi II"                 0xFB,
